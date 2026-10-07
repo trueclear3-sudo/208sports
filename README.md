@@ -15,11 +15,23 @@ Local high school sports for Eastern Idaho: schedules, scores, standings, roster
 
 GitHub Pages serves this folder. Any change pushed to the `main` branch goes live within a minute or two.
 
+## Scores update themselves
+
+A scheduled job (`.github/workflows/update-scores.yml`) runs several times a day. It reads every team's MaxPreps schedule page, cross-checks each game against the other school's page, and republishes the app only when something changed.
+
+- It never erases a score that is already in the app, and a page that fails to load changes nothing for that team.
+- `source/overrides.json` holds corrections made by hand. They win over MaxPreps.
+- `source/updater/last-run.txt` says what the last update changed. Anything the job could not reconcile shows up in the app's admin screen under "Needs a look."
+- To run it right now: open the **Actions** tab on GitHub, choose **Update scores**, and click **Run workflow**.
+
+Rosters and stat leaders are a snapshot (`source/static.json`) and do not update on their own.
+
 ## Changing things
 
 - **Admin screen:** add `#admin` to the end of the site address to show the gear button. For now, admin changes save only on the device that made them.
-- **Rebuilding the app:** in `source/`, run `python3 data.py` (rebuilds the data and checks every record) and then `python3 build.py`, then copy `dist/index.html` to this folder.
+- **Adding a team or sport:** edit `source/config.json`. Each team has one MaxPreps link; each sport lists the path that follows it.
+- **Rebuilding by hand:** `python3 source/updater/update.py` does everything: pulls scores, rebuilds `index.html`.
 
 ## Where the data comes from
 
-Schedules, scores, rosters and stat leaders were read from each team's MaxPreps page on October 6, 2026. The Hillcrest freshman schedule and roster come from the team's own sheet. Nothing is made up: anything not posted shows as "not posted."
+Schedules and scores come from each team's MaxPreps page. Rosters and stat leaders were read from MaxPreps on October 6, 2026. The Hillcrest freshman schedule and roster come from the team's own sheet. Nothing is made up: anything not posted shows as "not posted."

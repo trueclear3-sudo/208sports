@@ -120,6 +120,8 @@ function loadFavs(){try{const s=JSON.parse(localStorage.getItem(FAVKEY));if(Arra
 const DAYS=['SUN','MON','TUE','WED','THU','FRI','SAT'],MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const D=iso=>{const[y,m,d]=iso.split('-').map(Number);return new Date(y,m-1,d)};
 const dshort=iso=>{const d=D(iso);return DAYS[d.getDay()]+' '+(d.getMonth()+1)+'/'+d.getDate()};
+const fmtDay=s=>{const d=new Date(/T/.test(s)?s:s+'T12:00:00');return isNaN(d)?s:MON[d.getMonth()]+' '+d.getDate()};
+const fmtStamp=s=>{const d=new Date(s);if(isNaN(d)||!/T/.test(s||''))return null;let h=d.getHours();const m=String(d.getMinutes()).padStart(2,'0');return MON[d.getMonth()]+' '+d.getDate()+', '+((h%12)||12)+':'+m+' '+(h>=12?'PM':'AM')};
 const todayISO=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 const weekKey=iso=>{const d=D(iso);d.setDate(d.getDate()-((d.getDay()+6)%7));return d.getTime()};
 const played=g=>g.hs!=null&&g.as!=null;
@@ -237,13 +239,14 @@ function Home({M,favs,go,tab,setTab,openGame,openFavs,level,setLevel,setSport}){
     <section class="sec"><h2 class="eyebrow">All games</h2>
       <div class="chips scroll">${M.weeks.map((w,i)=>html`<button class="chip" aria-pressed=${wk===i} onClick=${()=>setWk(i)}>${w.label}</button>`)}</div>
       <div class="grid">${M.weeks[wk].games.map(g=>html`<${GameCard} M=${M} g=${g} go=${go} open=${openGame}/>`)}</div></section>`:null}
+  ${tab==='scores'&&fmtStamp(SEED.pulled)?html`<div class="note">Scores from MaxPreps, last updated ${fmtStamp(SEED.pulled)}.</div>`:null}
   ${tab==='teams'?Object.keys(M.confs).sort().map(c=>html`<section class="sec" style="padding-top:0"><h2 class="eyebrow">${c}</h2><div class="teamgrid">${M.confs[c].map(t=>{const r=M.rec(t.id);return html`<button class="tg" onClick=${()=>go({v:'team',id:t.id})}><${Logo} id=${t.id} size=${64}/><span>${t.name}</span><small>${r.all}</small></button>`})}</div></section>`):null}
   ${tab==='standings'?html`<section class="sec" style="padding-top:0">${Object.keys(M.confs).sort().map(c=>html`<${Standings} M=${M} conf=${c} go=${go}/>`)}<div class="note">${M.soccer?'Calculated from the scores in the app and ranked by points: 3 for a win, 1 for a tie. Games after the regular season are not counted as conference games. Some conference opponents are not in the app yet.':level==='v'?'Calculated from the scores in the app. Twin Falls plays in the 5A Great Basin; its other conference opponents are not in the app yet.':'There are no official '+LV[level]+' standings. These records come from the scores posted so far, so they can lag behind.'}</div></section>`:null}
   ${tab==='players'&&M.soccer?html`<section class="sec" style="padding-top:0"><div class="slot"><strong>No ${M.sp.name} stats yet</strong><span>Player stats for soccer have not been loaded.</span></div></section>`:null}
   ${tab==='players'&&!M.soccer?html`<section class="sec" style="padding-top:0"><h2 class="eyebrow">Area leaders · Varsity football</h2>
     <div class="chips scroll">${CATS.map(c=>html`<button class="chip" aria-pressed=${cat===c[0]} onClick=${()=>setCat(c[0])}>${c[1]}</button>`)}</div>
     <div class="list">${leaders.map((x,i)=>html`<button class="li" onClick=${()=>go({v:'team',id:x.t.id,tab:'stats'})}><span class="num" style="color:var(--muted);width:28px">${i+1}</span><${Logo} id=${x.t.id} size=${32}/><span class="grow"><b>${x.name}</b><div class="sub">${x.t.name}</div></span><span class="pill">${x.v}</span></button>`)}</div>
-    <div class="note">${cinfo[1]}${cinfo[2]?', '+cinfo[2]:''}. From each team's MaxPreps stats page on ${SEED.pulled}. Rigby and Madison have not posted player stats.</div></section>`:null}`;
+    <div class="note">${cinfo[1]}${cinfo[2]?', '+cinfo[2]:''}. From each team's MaxPreps stats page on ${fmtDay(SEED.statsDate||SEED.pulled)}. Rigby and Madison have not posted player stats.</div></section>`:null}`;
 }
 
 function TeamPage({M,id,tab,setTab,favs,toggle,go,openGame,openDonate,level,setLevel,setSport}){

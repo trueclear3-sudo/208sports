@@ -1,9 +1,18 @@
 name: Update scores
+# Reads MaxPreps and republishes the app when a score or schedule changes.
+# Times are UTC. Mountain time is 6 hours behind in fall (7 in winter).
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "7 13 * * *"     # early morning
+    - cron: "37 21 * * *"    # mid-afternoon
+    - cron: "37 0 * * *"     # early evening
+    - cron: "37 2 * * *"     # evening
+    - cron: "17 4,5 * * *"   # late evening, after football finals
+    - cron: "47 6 * * *"     # after midnight catch-up
   push:
     branches: [main]
-    paths: ["source/updater/**", ".github/workflows/update-scores.yml"]
+    paths: ["source/**", ".github/workflows/update-scores.yml"]
 permissions:
   contents: write
 concurrency:
@@ -12,17 +21,20 @@ concurrency:
 jobs:
   update:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Probe MaxPreps
-        run: python3 source/updater/probe.py
-      - name: Save results
+      - name: Read MaxPreps and rebuild the app
+        run: python3 source/updater/update.py
+      - name: Publish if anything changed
         run: |
           git config user.name "208 Pressbox updater"
           git config user.email "actions@users.noreply.github.com"
           git add -A
-          git diff --cached --quiet || git commit -m "Updater probe results"
+          if git diff --cached --quiet; then echo "Nothing to publish."; exit 0; fi
+          git commit -m "Scores update: $(sed -n 2p source/updater/last-run.txt)"
+          git pull --rebase -q origin main
           git push

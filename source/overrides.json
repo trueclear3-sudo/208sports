@@ -1,0 +1,79 @@
+{
+ "football|fr|hil": {
+  "why": "Corrected by David on 2026-10-06 from the Hillcrest team app. MaxPreps was missing three of these games and had two sites wrong. Rows here replace Hillcrest's own MaxPreps freshman page; scores for games still to play are filled in from the opponent's page when it posts one.",
+  "rows": [
+   {
+    "date": "2026-08-27",
+    "ha": "A",
+    "opp": "Bishop Kelly",
+    "sc": [
+     0,
+     32
+    ]
+   },
+   {
+    "date": "2026-09-03",
+    "ha": "H",
+    "opp": "Twin Falls",
+    "sc": [
+     27,
+     34
+    ]
+   },
+   {
+    "date": "2026-09-10",
+    "ha": "A",
+    "opp": "Shelley",
+    "sc": [
+     12,
+     27
+    ]
+   },
+   {
+    "date": "2026-09-17",
+    "ha": "A",
+    "opp": "Century",
+    "sc": [
+     30,
+     26
+    ]
+   },
+   {
+    "date": "2026-09-26",
+    "ha": "A",
+    "opp": "Thunder Ridge",
+    "sc": [
+     14,
+     21
+    ]
+   },
+   {
+    "date": "2026-10-01",
+    "ha": "A",
+    "opp": "Bonneville",
+    "sc": [
+     6,
+     46
+    ]
+   },
+   {
+    "date": "2026-10-08",
+    "ha": "H",
+    "opp": "Idaho Falls",
+    "time": "3:00 PM"
+   },
+   {
+    "date": "2026-10-15",
+    "ha": "H",
+    "opp": "Skyline",
+    "time": "4:30 PM"
+   },
+   {
+    "date": "2026-10-21",
+    "ha": "H",
+    "opp": "Blackfoot",
+    "time": "4:30 PM"
+   }
+  ]
+ }
+}

@@ -1,0 +1,143 @@
+{
+ "season": "2026",
+ "sports": [
+  {
+   "id": "football",
+   "name": "Football",
+   "on": true,
+   "levels": [
+    "v",
+    "jv",
+    "fr"
+   ],
+   "paths": {
+    "v": "football/",
+    "jv": "football/jv/",
+    "fr": "football/freshman/"
+   }
+  },
+  {
+   "id": "bsoc",
+   "name": "Boys Soccer",
+   "on": true,
+   "levels": [
+    "v"
+   ],
+   "paths": {
+    "v": "soccer/"
+   }
+  },
+  {
+   "id": "gsoc",
+   "name": "Girls Soccer",
+   "on": true,
+   "levels": [
+    "v"
+   ],
+   "paths": {
+    "v": "soccer/girls/"
+   }
+  }
+ ],
+ "teams": [
+  {
+   "id": "bla",
+   "name": "Blackfoot",
+   "mascot": "Broncos",
+   "conf": "5A High Country",
+   "base": "https://www.maxpreps.com/id/blackfoot/blackfoot-broncos/"
+  },
+  {
+   "id": "bon",
+   "name": "Bonneville",
+   "mascot": "Bees",
+   "conf": "5A High Country",
+   "base": "https://www.maxpreps.com/id/idaho-falls/bonneville-bees/"
+  },
+  {
+   "id": "cen",
+   "name": "Century",
+   "mascot": "Diamondbacks",
+   "conf": "5A High Country",
+   "base": "https://www.maxpreps.com/id/pocatello/century-diamondbacks/"
+  },
+  {
+   "id": "hig",
+   "name": "Highland",
+   "mascot": "Rams",
+   "conf": "6A High Country",
+   "base": "https://www.maxpreps.com/id/pocatello/highland-rams/"
+  },
+  {
+   "id": "hil",
+   "name": "Hillcrest",
+   "mascot": "Knights",
+   "conf": "5A High Country",
+   "base": "https://www.maxpreps.com/id/idaho-falls/hillcrest-knights/"
+  },
+  {
+   "id": "idf",
+   "name": "Idaho Falls",
+   "mascot": "Tigers",
+   "conf": "5A High Country",
+   "base": "https://www.maxpreps.com/id/idaho-falls/idaho-falls-tigers/"
+  },
+  {
+   "id": "mad",
+   "name": "Madison",
+   "mascot": "Bobcats",
+   "conf": "6A High Country",
+   "base": "https://www.maxpreps.com/id/rexburg/madison-bobcats/"
+  },
+  {
+   "id": "poc",
+   "name": "Pocatello",
+   "mascot": "Thunder",
+   "conf": "5A High Country",
+   "base": "https://www.maxpreps.com/id/pocatello/pocatello-thunder/"
+  },
+  {
+   "id": "rig",
+   "name": "Rigby",
+   "mascot": "Trojans",
+   "conf": "6A High Country",
+   "base": "https://www.maxpreps.com/id/rigby/rigby-trojans/"
+  },
+  {
+   "id": "she",
+   "name": "Shelley",
+   "mascot": "Russets",
+   "conf": "5A High Country",
+   "base": "https://www.maxpreps.com/id/shelley/shelley-russets/"
+  },
+  {
+   "id": "sky",
+   "name": "Skyline",
+   "mascot": "Grizzlies",
+   "conf": "5A High Country",
+   "base": "https://www.maxpreps.com/id/idaho-falls/skyline-grizzlies/"
+  },
+  {
+   "id": "thu",
+   "name": "Thunder Ridge",
+   "mascot": "Titans",
+   "conf": "6A High Country",
+   "base": "https://www.maxpreps.com/id/idaho-falls/thunder-ridge-titans/"
+  },
+  {
+   "id": "twi",
+   "name": "Twin Falls",
+   "mascot": "Bruins",
+   "conf": "5A Great Basin",
+   "base": "https://www.maxpreps.com/id/twin-falls/twin-falls-bruins/"
+  }
+ ],
+ "notes": [
+  "Rigby: no varsity football roster posted on MaxPreps \u2014 paste one in under Rosters",
+  "Rigby and Madison: no football player stats posted on MaxPreps",
+  "Hillcrest: MaxPreps varsity football roster lists no positions",
+  "Hillcrest freshman roster: Ike Bowers, Joseph Garvin, Logan Whitaker and Ryan Johnson have no jersey number on the sheet",
+  "Rosters and stat leaders are a snapshot from October 6 and do not update automatically",
+  "Soccer: rosters and player stats are not loaded"
+ ]
+}
