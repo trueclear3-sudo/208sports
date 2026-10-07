@@ -14,7 +14,8 @@
     "v": "football/",
     "jv": "football/jv/",
     "fr": "football/freshman/"
-   }
+   },
+   "stats": true
   },
   {
    "id": "bsoc",
@@ -25,7 +26,8 @@
    ],
    "paths": {
     "v": "soccer/"
-   }
+   },
+   "stats": true
   },
   {
    "id": "gsoc",
@@ -36,7 +38,24 @@
    ],
    "paths": {
     "v": "soccer/girls/"
-   }
+   },
+   "stats": true
+  },
+  {
+   "id": "vb",
+   "name": "Volleyball",
+   "on": true,
+   "levels": [
+    "v",
+    "jv",
+    "fr"
+   ],
+   "paths": {
+    "v": "volleyball/",
+    "jv": "volleyball/jv/",
+    "fr": "volleyball/freshman/"
+   },
+   "stats": true
   },
   {
    "id": "bbb",
@@ -54,7 +73,8 @@
    },
    "roster": {
     "lastSeason": "25-26"
-   }
+   },
+   "stats": true
   },
   {
    "id": "gbb",
@@ -72,7 +92,8 @@
    },
    "roster": {
     "lastSeason": "25-26"
-   }
+   },
+   "stats": true
   }
  ],
  "teams": [
@@ -173,9 +194,9 @@
   "Rigby and Madison: no football player stats posted on MaxPreps",
   "Hillcrest: MaxPreps varsity football roster lists no positions",
   "Hillcrest freshman roster: Ike Bowers, Joseph Garvin, Logan Whitaker and Ryan Johnson have no jersey number on the sheet",
-  "Rosters and stat leaders are a snapshot from October 6 and do not update automatically",
-  "Soccer: rosters and player stats are not loaded",
   "Basketball: the roster shown is last season's (2025-26) until a school posts this season's on MaxPreps",
-  "Wrestling: no school has a schedule or roster on MaxPreps, so it is not in the app yet"
+  "Wrestling: no school has a schedule or roster on MaxPreps, so it is not in the app yet",
+  "Football and soccer rosters do not update on their own; stat leaders for every sport refresh with each score update",
+  "Soccer and volleyball rosters are not loaded"
  ]
 }

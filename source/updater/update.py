@@ -85,6 +85,43 @@ def parse_roster(page):
         out.append(dict(n=str(r[8] or ""), name=name, pos=(r[12] or "").strip(), gr=(r[36] or "").strip(". ")))
     return out
 
+FB_KEYS = {"Rushing Yards Per Game": "RUSH", "Receiving Yards Per Game": "REC", "Total TDs": "TD", "Passing TDs": "PTD",
+           "Tackles Per Game": "TKL", "Sacks": "SACK", "Interceptions": "INT"}   # football keeps the short names the app started with
+
+def parse_stats(page, sport):
+    """Stat leaders: a list of {athleteFirstName, athleteLastName, stat: {displayName, value, sortDirection}}, top three per category."""
+    m = re.search(r'(?s)<script id="__NEXT_DATA__"[^>]*>(.*?)</script>', page)
+    if not m: raise ValueError("page has no stats data block")
+    d = json.loads(m.group(1))["props"]["pageProps"].get("playerStatLeadersData")
+    if d is None: raise ValueError("page has no stat leaders block")
+    cats, low = {}, []
+    for x in d.get("leaders") or []:
+        st = x.get("stat") or {}
+        name = ("%s %s" % (x.get("athleteFirstName") or "", x.get("athleteLastName") or "")).strip()
+        label = re.sub(r"[./|]", " ", (st.get("displayName") or "")).strip()
+        try: v = float(st.get("value"))
+        except (TypeError, ValueError): continue
+        if not name or not label: continue
+        key = FB_KEYS.get(label, label) if sport == "football" else label
+        cats.setdefault(key, []).append(dict(name=name, v=v))
+        if st.get("sortDirection") and key not in low: low.append(key)
+    return cats, low
+
+def pull_stats(out):
+    for sp in CFG["sports"]:
+        if not sp.get("on") or not sp.get("stats"): continue
+        for t in CFG["teams"]:
+            key = "stats|%s|%s" % (sp["id"], t["id"])
+            try:
+                status, page = fetch(t["base"] + sp["paths"]["v"] + "stats/")
+                if status != 200: raise ValueError("could not load (%s)" % str(page)[:80])
+                cats, low = parse_stats(page, sp["id"])
+                out[key] = dict(ok=True, rows=[], stated={}, cats=cats, low=low)
+            except Exception as e:
+                out[key] = dict(ok=False, error=str(e)[:200], rows=[], stated={}, cats={}, low=[])
+            print(("ok  " if out[key]["ok"] else "FAIL"), key, len(out[key]["cats"]), out[key].get("error", ""))
+            time.sleep(0.5)
+
 def pull_rosters(out):
     """Varsity rosters for sports that ask for them. If this season's is empty, last season's is used and labeled."""
     for sp in CFG["sports"]:
@@ -122,6 +159,7 @@ def pull():
                 print(("ok  " if out[key]["ok"] else "FAIL"), key, len(out[key]["rows"]), out[key].get("error", ""))
                 time.sleep(0.6)
     pull_rosters(out)
+    pull_stats(out)
     return out
 
 # ---------------------------------------------------------------- putting games together
@@ -261,7 +299,7 @@ def main():
     if len(prev.get("games", [])) and len(games) < 0.7 * len(prev["games"]):
         print("STOPPING: only %d games found, the app has %d. Nothing was changed." % (len(games), len(prev["games"]))); sys.exit(1)
 
-    teams = []
+    teams, stat_low = [], list(prev.get("statLow", []))
     for t in CFG["teams"]:
         st = STATIC["teams"].get(t["id"], {})
         rosters, note = json.loads(json.dumps(st.get("rosters", {}))), {}
@@ -274,11 +312,20 @@ def main():
             elif sp.get("roster") and (old.get("rosters", {}).get(sp["id"], {}).get("v")):   # a failed page keeps the roster the app had
                 rosters.setdefault(sp["id"], {})["v"] = old["rosters"][sp["id"]]["v"]
                 if old.get("rosterNote", {}).get(sp["id"]): note[sp["id"]] = old["rosterNote"][sp["id"]]
+        stats = json.loads(json.dumps(st.get("stats", {})))
+        for sp in CFG["sports"]:
+            r = pulled.get("stats|%s|%s" % (sp["id"], t["id"]))
+            if r and r["ok"] and r["cats"]:
+                stats[sp["id"]] = r["cats"]
+                for k in r.get("low", []):
+                    if k not in stat_low: stat_low.append(k)
+            elif r and not r["ok"] and old.get("stats", {}).get(sp["id"]):      # a failed page keeps the stats the app had
+                stats[sp["id"]] = old["stats"][sp["id"]]
         teams.append(dict(id=t["id"], name=t["name"], mascot=t["mascot"], conf=t["conf"],
                           links={s["id"]: t["base"] + s["paths"]["v"] for s in CFG["sports"]},
-                          rosters=rosters, rosterNote=note, stats=st.get("stats", {}), favBiz=[]))
+                          rosters=rosters, rosterNote=note, stats=stats, favBiz=[]))
     sports = [dict(id=s["id"], name=s["name"], on=s.get("on", True), levels=s["levels"]) for s in CFG["sports"]]
-    body = dict(season=CFG["season"], statsDate=STATIC.get("statsDate"), sports=sports, teams=teams, games=games,
+    body = dict(season=CFG["season"], statsDate=STATIC.get("statsDate"), statLow=stat_low, sports=sports, teams=teams, games=games,
                 businesses=prev.get("businesses", []), flags=flags)
     old_body = {k: prev.get(k) for k in body}
     print("%d games, %d with scores, %d notes for the admin" % (len(games), sum(1 for g in games if g["hs"] is not None), len(flags)))

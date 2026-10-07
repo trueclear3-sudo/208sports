@@ -234,17 +234,19 @@ function applyPatch(seed,p,live){
   if(p.businesses)S.businesses=p.businesses;
   S.teams.forEach(t=>{const e=(p.teams||{})[t.id];if(e)Object.assign(t,e);t.favBiz=(p.favBiz||{})[t.id]||[];
     Object.keys(p.rosters||{}).forEach(k=>{const[tid,sp,lv]=k.split('|');if(tid===t.id){t.rosters[sp]=t.rosters[sp]||{};t.rosters[sp][lv]=p.rosters[k]}})});
+  Object.keys(p.stats||{}).forEach(k=>{const[tid,sp]=k.split('|'),t=S.teams.find(x=>x.id===tid);if(t){t.stats=t.stats||{};t.stats[sp]=p.stats[k]}});
   S.flags=S.flags.filter(f=>!(p.flagsDone||[]).includes(f));
   S.polls=p.polls||[];S.recaps=p.recaps||{};S.look=p.look||'board';
   return S;
 }
 function derivePatch(S){
   const J=JSON.stringify,sg={},st={};SEED.games.forEach(g=>sg[g.id]=g);SEED.teams.forEach(t=>st[t.id]=t);
-  const p={scores:{},sponsors:{},rosters:{},teams:{},favBiz:{},businesses:S.businesses||[],flagsDone:SEED.flags.filter(f=>!S.flags.includes(f)),polls:S.polls||[],recaps:S.recaps||{},look:S.look||'board'};
+  const p={scores:{},sponsors:{},rosters:{},stats:{},teams:{},favBiz:{},businesses:S.businesses||[],flagsDone:SEED.flags.filter(f=>!S.flags.includes(f)),polls:S.polls||[],recaps:S.recaps||{},look:S.look||'board'};
   S.games.forEach(g=>{const o=sg[g.id];if(!o)return;if(g.hs!==o.hs||g.as!==o.as)p.scores[g.id]=[g.as??null,g.hs??null];if(g.sponsors.length)p.sponsors[g.id]={mode:g.sponsorMode,list:g.sponsors}});
   S.teams.forEach(t=>{const o=st[t.id];if(!o)return;if(t.favBiz.length)p.favBiz[t.id]=t.favBiz;
     if(t.name!==o.name||t.mascot!==o.mascot||J(t.links)!==J(o.links))p.teams[t.id]={name:t.name,mascot:t.mascot,links:t.links};
-    Object.keys(t.rosters).forEach(sp=>Object.keys(t.rosters[sp]).forEach(lv=>{if(J(t.rosters[sp][lv])!==J((o.rosters[sp]||{})[lv]||[]))p.rosters[t.id+'|'+sp+'|'+lv]=t.rosters[sp][lv]}))});
+    Object.keys(t.rosters).forEach(sp=>Object.keys(t.rosters[sp]).forEach(lv=>{if(J(t.rosters[sp][lv])!==J((o.rosters[sp]||{})[lv]||[]))p.rosters[t.id+'|'+sp+'|'+lv]=t.rosters[sp][lv]}));
+    Object.keys(t.stats||{}).forEach(sp=>{if(J(t.stats[sp])!==J((o.stats||{})[sp]||{}))p.stats[t.id+'|'+sp]=t.stats[sp]})});
   return clone(p);
 }
 let SAY=()=>{},PICKED=()=>{};   // SAY: small pop-up message. PICKED: tells the app about a new pick so schedules can show it.   // small pop-up message, set by App
@@ -286,9 +288,16 @@ function model(S,sport,level){
   weeks.forEach((w,i)=>{const d=D(w.first);w.label='Wk '+(i+1)+' · '+MON[d.getMonth()]+' '+d.getDate()});
   const t0=todayISO();let cur=weeks.findIndex(w=>w.games.some(g=>!played(g)&&g.date>=t0));if(cur<0)cur=weeks.length-1;
   const recAt=(id,date)=>{let w=0,l=0,t=0,run=0;gamesOf(id).forEach(g=>{if(!played(g)||g.date>date)return;const mine=g.home===id?g.hs:g.as,th=g.home===id?g.as:g.hs;if(mine>th){w++;run=run>0?run+1:1}else if(mine<th){l++;run=run<0?run-1:-1}else{t++;run=0}});return{all:w+'-'+l+(t?'-'+t:''),run}};
-  return{S,G,sport,soccer,fb:sport==='football',sp,level,T,B,sideOf,isConf,gamesOf,rec,recAt,confs,standings,weeks,cur};
+  return{S,G,sport,soccer,fb:sport==='football',vb:sport==='vb',sp,level,T,B,sideOf,isConf,gamesOf,rec,recAt,confs,standings,weeks,cur};
 }
 const NOTE={FF:'FORFEIT',OT:'FINAL/OT'};
+// Stat categories for a sport: football keeps its fixed order and labels; other sports use whatever categories have been loaded.
+const catsFor=(M,sport)=>{const seen=[];M.S.teams.forEach(t=>Object.keys((t.stats||{})[sport]||{}).forEach(k=>{if(!seen.includes(k))seen.push(k)}));const fb=sport==='football'?CATS.filter(c=>seen.includes(c[0])):[];return fb.concat(seen.filter(k=>!fb.some(c=>c[0]===k)).map(k=>[k,k,'']))};
+function teamNumbers(M,id){const gs=M.gamesOf(id).filter(played);if(!gs.length)return null;let pf=0,pa=0,hw=0,hl=0,aw=0,al=0,best=null,run=0;
+  gs.forEach(g=>{const home=g.home===id,mine=home?g.hs:g.as,th=home?g.as:g.hs;pf+=mine;pa+=th;if(mine>th){home?hw++:aw++;run=run>0?run+1:1;if(!best||mine-th>best.d)best={d:mine-th,g,mine,th}}else if(mine<th){home?hl++:al++;run=run<0?run-1:-1}else run=0});
+  const per=n=>(Math.round(10*n/gs.length)/10).toFixed(1);
+  return{n:gs.length,pf:per(pf),pa:per(pa),home:hw+'-'+hl,away:aw+'-'+al,streak:run>0?'Won '+run:run<0?'Lost '+(-run):'None',best};}
+const loadHidden=()=>{const h=ls.json('pb_hide_sports');return Array.isArray(h)?h:[]};
 const status=g=>g.inprog?{t:'LIVE · '+g.live.st,up:true,live:true}:played(g)?{t:(NOTE[g.note]||(g.note?'FINAL/'+g.note:'FINAL'))+' · '+dshort(g.date),up:false}:g.date<todayISO()?{t:dshort(g.date)+' · SCORE NOT POSTED',up:false}:{t:dshort(g.date)+' · '+(g.time||'TIME TBD'),up:true};
 function sponsorLine(M,g){
   if(!g.sponsors.length)return null;
@@ -314,8 +323,9 @@ const Ico={
   camera:html`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>`,
   heart:html`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.600-7 10-7 10z"/></svg>`
 };
-function Sports({M,setSport}){
-  return html`<div class="chips" role="group" aria-label="Sport">${M.S.sports.filter(x=>x.on).map(x=>html`<button class="chip" aria-pressed=${M.sport===x.id} onClick=${()=>setSport(x.id)}>${x.name}</button>`)}</div>`;
+function Sports({M,setSport,all,edit}){
+  const hid=all?[]:(M.hidden||[]);
+  return html`<div class="chips" role="group" aria-label="Sport">${M.S.sports.filter(x=>x.on&&(M.sport===x.id||!hid.includes(x.id))).map(x=>html`<button class="chip" aria-pressed=${M.sport===x.id} onClick=${()=>setSport(x.id)}>${x.name}</button>`)}${edit?html`<button class="chip" style="border-style:dashed;color:var(--muted)" onClick=${edit}>${hid.length?'+ '+hid.length+' hidden':'Edit sports'}</button>`:null}</div>`;
 }
 function Levels({level,setLevel,M}){
   if(M&&(M.sp.levels||['v']).length<2)return null;
@@ -356,12 +366,17 @@ function GameSheet({M,g,go,onClose,openSheet}){
 }
 function Standings({M,conf,me,go}){
   const rows=M.standings(conf);
-  return html`<div class="tablebox"><table><thead><tr><th>${conf}</th><th>Conf</th><th>All</th><th>${M.soccer?'GF':'PF'}</th><th>${M.soccer?'GA':'PA'}</th></tr></thead><tbody>
+  return html`<div class="tablebox"><table><thead><tr><th>${conf}</th><th>Conf</th><th>All</th><th>${M.vb?'SW':M.soccer?'GF':'PF'}</th><th>${M.vb?'SL':M.soccer?'GA':'PA'}</th></tr></thead><tbody>
     ${rows.map(({t,r})=>html`<tr class=${t.id===me?'me':''}><td><button class="tbtn" onClick=${()=>go({v:'team',id:t.id})}><${Logo} id=${t.id} size=${28}/>${t.name}</button></td><td>${r.cf}</td><td>${r.all}</td><td>${r.pf}</td><td>${r.pa}</td></tr>`)}
   </tbody></table></div>`;
 }
-function FavSheet({M,favs,toggle,onClose}){
-  return html`<${Sheet} title="My teams" onClose=${onClose}><div class="list">${M.S.teams.map(t=>html`<div class="li"><${Logo} id=${t.id} size=${36}/><span class="grow"><b>${t.name}</b><div class="sub">${t.mascot}</div></span><button class=${'btn sm'+(favs.includes(t.id)?' pri':'')} aria-pressed=${favs.includes(t.id)} onClick=${()=>toggle(t.id)}>${favs.includes(t.id)?'Following':'Follow'}</button></div>`)}</div><//>`;
+function FavSheet({M,favs,toggle,onClose,toggleSport}){
+  const hid=M.hidden||[],on=M.S.sports.filter(x=>x.on),left=on.filter(x=>!hid.includes(x.id)).length;
+  return html`<${Sheet} title="My teams and sports" onClose=${onClose}>
+    <h3 class="eyebrow">My sports</h3><div class="note">Sports you turn off are tucked away from the sport buttons. You can bring them back here any time.</div>
+    <div class="list">${on.map(x=>{const f=!hid.includes(x.id);return html`<div class="li"><span class="grow"><b>${x.name}</b></span><button class=${'btn sm'+(f?' pri':'')} aria-pressed=${f} disabled=${f&&left<2} onClick=${()=>toggleSport(x.id)}>${f?'Showing':'Hidden'}</button></div>`})}</div>
+    <h3 class="eyebrow">My teams</h3>
+    <div class="list">${M.S.teams.map(t=>html`<div class="li"><${Logo} id=${t.id} size=${36}/><span class="grow"><b>${t.name}</b><div class="sub">${t.mascot}</div></span><button class=${'btn sm'+(favs.includes(t.id)?' pri':'')} aria-pressed=${favs.includes(t.id)} onClick=${()=>toggle(t.id)}>${favs.includes(t.id)?'Following':'Follow'}</button></div>`)}</div><//>`;
 }
 function SearchSheet({M,go,onClose,setLevel,setSport}){
   const[q,setQ]=useState('');const s=q.trim().toLowerCase();
@@ -377,10 +392,10 @@ function SearchSheet({M,go,onClose,setLevel,setSport}){
 }
 
 function Home({M,favs,go,tab,setTab,openGame,openFavs,level,setLevel,setSport,openSheet,ver}){
-  const[wk,setWk]=useState(M.cur);const[cat,setCat]=useState('RUSH');
+  const[wk,setWk]=useState(M.cur);const[cat0,setCat]=useState('');const cats=catsFor(M,M.sport),cat=cats.some(c=>c[0]===cat0)?cat0:(cats[0]||[''])[0];
   const mine=useMemo(()=>{const out=[];favs.forEach(id=>{const gs=M.gamesOf(id);const last=[...gs].reverse().find(played);const next=gs.find(g=>!played(g)&&g.date>=todayISO());[last,next].forEach(g=>{if(g&&!out.includes(g))out.push(g)})});return out.sort((a,b)=>a.date<b.date?-1:1)},[M,favs]);
-  const leaders=M.S.teams.flatMap(t=>((t.stats.football||{})[cat]||[]).map(x=>({...x,t}))).sort((a,b)=>b.v-a.v).slice(0,15);
-  const cinfo=CATS.find(c=>c[0]===cat),polls=COMMUNITY?(M.S.polls||[]):[],poll=polls.find(x=>x.open)||polls[0];
+  const leaders=M.S.teams.flatMap(t=>(((t.stats||{})[M.sport]||{})[cat]||[]).map(x=>({...x,t}))).sort((a,b)=>(SEED.statLow||[]).includes(cat)?a.v-b.v:b.v-a.v).slice(0,15);
+  const cinfo=cats.find(c=>c[0]===cat)||['','',''],polls=COMMUNITY?(M.S.polls||[]):[],poll=polls.find(x=>x.open)||polls[0];
   const TABS=[['teams','Teams'],['scores','Scores'],['standings','Standings'],['players','Players'],['playoffs','Playoffs']].concat(COMMUNITY?[['picks',"Pick'em"],['photos','Photos']]:[]);
   return html`
   <${InstallBar} open=${()=>openSheet({k:'install'})}/>
@@ -388,7 +403,7 @@ function Home({M,favs,go,tab,setTab,openGame,openFavs,level,setLevel,setSport,op
     <div class="myteams">${favs.map(id=>M.T[id]&&html`<button class="mt" onClick=${()=>go({v:'team',id})}><${Logo} id=${id} size=${60}/><span>${M.T[id].name}</span></button>`)}
       <button class="mt" aria-label="Add a favorite team" onClick=${openFavs} style="color:var(--muted)"><span class="add-ring">${Ico.plus}</span><span>Add</span></button></div></section>
   <nav class="tabs" aria-label="Sections">${TABS.map(([k,l])=>html`<button class="tab" aria-current=${tab===k?'page':null} onClick=${()=>setTab(k)}>${l}</button>`)}</nav>
-  <section class="sec" aria-label="Sport and level"><${Sports} M=${M} setSport=${setSport}/><${Levels} level=${level} setLevel=${setLevel} M=${M}/></section>
+  <section class="sec" aria-label="Sport and level"><${Sports} M=${M} setSport=${setSport} edit=${openFavs}/><${Levels} level=${level} setLevel=${setLevel} M=${M}/></section>
   ${tab==='scores'&&poll&&poll.open?html`<button class="banner between" style="width:100%;text-align:left;margin-bottom:14px;color:var(--fg)" onClick=${()=>setTab('players')}><span><b>Vote: ${poll.title}</b><br/>${poll.noms.length} nominees. One vote a day.</span><span class="btn sm pri">Vote</span></button>`:null}
   ${tab==='scores'?html`
     <section class="sec" style="padding-top:0"><h2 class="eyebrow">My teams' scores</h2>
@@ -400,21 +415,22 @@ function Home({M,favs,go,tab,setTab,openGame,openFavs,level,setLevel,setSport,op
   ${tab==='teams'?Object.keys(M.confs).sort().map(c=>html`<section class="sec" style="padding-top:0"><h2 class="eyebrow">${c}</h2><div class="teamgrid">${M.confs[c].map(t=>{const r=M.rec(t.id);return html`<button class="tg" onClick=${()=>go({v:'team',id:t.id})}><${Logo} id=${t.id} size=${64}/><span>${t.name}</span><small>${r.all}</small></button>`})}</div></section>`):null}
   ${tab==='standings'?html`<section class="sec" style="padding-top:0">${Object.keys(M.confs).sort().map(c=>html`<${Standings} M=${M} conf=${c} go=${go}/>`)}<div class="note">${M.soccer?'Calculated from the scores in the app and ranked by points: 3 for a win, 1 for a tie. Games after the regular season are not counted as conference games. Some conference opponents are not in the app yet.':!M.fb?'Calculated from the scores in the app, so they can lag behind until scores are posted.':level==='v'?'Calculated from the scores in the app. Twin Falls plays in the 5A Great Basin; its other conference opponents are not in the app yet.':'There are no official '+LV[level]+' standings. These records come from the scores posted so far, so they can lag behind.'}</div></section>`:null}
   ${tab==='players'&&poll?html`<section class="sec" style="padding-top:0"><${Poll} key=${poll.id} M=${M} poll=${poll}/></section>`:null}
-  ${tab==='players'&&!M.fb?html`<section class="sec" style="padding-top:0"><div class="slot"><strong>No ${M.sp.name} stats yet</strong><span>Player stats for ${M.sp.name} have not been loaded.</span></div></section>`:null}
+  ${tab==='players'&&!cats.length?html`<section class="sec" style="padding-top:0"><div class="slot"><strong>No ${M.sp.name} stats yet</strong><span>Player stats for ${M.sp.name} have not been loaded.</span></div></section>`:null}
   ${tab==='playoffs'?html`<section class="sec" style="padding-top:0"><${Playoffs} M=${M} go=${go} openGame=${openGame}/></section>`:null}
   ${tab==='picks'?html`<section class="sec" style="padding-top:0"><${Pickem} key=${M.sport} S=${M.S} sport=${M.sport}/></section>`:null}
   ${tab==='photos'?html`<section class="sec" style="padding-top:0"><${Photos} M=${M} favs=${favs} openSheet=${openSheet} ver=${ver}/></section>`:null}
-  ${tab==='players'&&M.fb?html`<section class="sec" style="padding-top:0"><h2 class="eyebrow">Area leaders · Varsity football</h2>
-    <div class="chips scroll">${CATS.map(c=>html`<button class="chip" aria-pressed=${cat===c[0]} onClick=${()=>setCat(c[0])}>${c[1]}</button>`)}</div>
+  ${tab==='players'&&cats.length?html`<section class="sec" style="padding-top:0"><h2 class="eyebrow">Area leaders · Varsity ${M.sp.name}</h2>
+    <div class="chips scroll">${cats.map(c=>html`<button class="chip" aria-pressed=${cat===c[0]} onClick=${()=>setCat(c[0])}>${c[1]}</button>`)}</div>
     <div class="list">${leaders.map((x,i)=>html`<button class="li" onClick=${()=>go({v:'team',id:x.t.id,tab:'stats'})}><span class="num" style="color:var(--muted);width:28px">${i+1}</span><${Logo} id=${x.t.id} size=${32}/><span class="grow"><b>${x.name}</b><div class="sub">${x.t.name}</div></span><span class="pill">${x.v}</span></button>`)}</div>
-    <div class="note">${cinfo[1]}${cinfo[2]?', '+cinfo[2]:''}. From each team's MaxPreps stats page on ${fmtDay(SEED.statsDate||SEED.pulled)}. Rigby and Madison have not posted player stats.</div></section>`:null}`;
+    ${leaders.length?null:html`<div class="note">Nobody has ${cinfo[1]} numbers posted yet.</div>`}
+    <div class="note">${cinfo[1]}${cinfo[2]?', '+cinfo[2]:''}. From each team's MaxPreps stats page, refreshed with every score update, plus anything added by 208 Pressbox. Teams that have not posted stats are not listed.</div></section>`:null}`;
 }
 
 function TeamPage({M,id,tab,setTab,favs,toggle,go,openGame,openDonate,level,setLevel,setSport,openSheet,ver}){
   const t=M.T[id],r=M.rec(id),gs=M.gamesOf(id),fav=favs.includes(id);
   const biz=t.favBiz.map(b=>M.B[b]).filter(Boolean);
   useEffect(()=>{track('team',id)},[id]);if(tab==='sponsors')biz.forEach(b=>track('sponsorSeen',b.id,true));
-  const fstats=t.stats.football||{},hasStats=M.fb&&level==='v'&&Object.keys(fstats).length>0,roster=((t.rosters[M.sport]||{})[level])||[];
+  const fstats=(t.stats||{})[M.sport]||{},tcats=catsFor(M,M.sport).filter(c=>(fstats[c[0]]||[]).length),hasStats=level==='v'&&tcats.length>0,tn=teamNumbers(M,id),roster=((t.rosters[M.sport]||{})[level])||[];
   return html`
   <button class="back" onClick=${()=>go({v:'home'})}>${Ico.back} All teams</button>
   <div class="hero"><${Logo} id=${id} size=${84}/><div><h1>${t.name} ${t.mascot}</h1><p>${M.sp.name}${level==='v'?'':' '+LV[level]} · ${r.all} overall · ${r.cf} ${t.conf}</p></div></div>
@@ -426,9 +442,14 @@ function TeamPage({M,id,tab,setTab,favs,toggle,go,openGame,openDonate,level,setL
     return html`<button class="li" onClick=${()=>openGame(g)}><span style="width:64px;flex:none;font-size:12px;font-weight:600;letter-spacing:.8px;color:var(--muted)">${dshort(g.date)}</span><${Logo} id=${opp.id} name=${opp.name}/><span class="grow"><b>${g.siteUnknown?'vs':home?'vs':'at'} ${opp.name}</b><div class="sub">${M.isConf(g)?'Conference':g.post?'':'Non-conference'}${sp?html` · ${sp}`:''}${pickNote(M,g)?html`${M.isConf(g)||!g.post||sp?' · ':''}${pickNote(M,g)}`:null}</div></span>
       ${pl?html`<span class=${'pill '+(mine>th?'w':mine<th?'l':'')}>${mine>th?'W':mine<th?'L':'T'} ${mine}-${th}</span>`:html`<span class="pill u">${g.date<todayISO()?'—':(g.time||'TBD')}</span>`}</button>`})}</div>
     ${gs.length?null:html`<div class="slot"><strong>No games listed</strong><span>${t.name} has not posted a ${M.sp.name} ${LV[level]} schedule.</span></div>`}<a class="note" href=${mpLink(t,'schedule',level,M.sport)} target="_blank" rel="noopener">Schedule on MaxPreps</a>`:null}
-  ${tab==='standings'?html`<${Standings} M=${M} conf=${t.conf} me=${id} go=${go}/><div class="note">PF and PA are points for and against in all games.</div>`:null}
-  ${tab==='stats'?(hasStats?html`<div class="grid">${CATS.filter(c=>fstats[c[0]]).map(c=>html`<div class="card"><div class="meta"><span>${c[1]}</span><span>${c[2]}</span></div>${fstats[c[0]].map(x=>html`<div class="trow"><span class="nm">${x.name}</span><span class="score" style="font-size:22px">${x.v}</span></div>`)}</div>`)}</div><a class="note" href=${mpLink(t,'stats')} target="_blank" rel="noopener">Full stats on MaxPreps</a>`
-    :html`<div class="slot"><strong>No stats posted yet</strong><span>${!M.fb?'Player stats for '+M.sp.name+' have not been loaded.':level==='v'?t.name+' has not posted player stats on MaxPreps this season.':'Player stats are varsity only.'}</span></div>`):null}
+  ${tab==='standings'?html`<${Standings} M=${M} conf=${t.conf} me=${id} go=${go}/><div class="note">${M.vb?'SW and SL are sets won and lost in all matches.':M.soccer?'GF and GA are goals for and against in all games.':'PF and PA are points for and against in all games.'}</div>`:null}
+  ${tab==='stats'&&tn?html`<h2 class="eyebrow">Team numbers · ${tn.n} game${tn.n===1?'':'s'}</h2><div class="tablebox"><table><tbody>
+    <tr><td>${M.vb?'Sets won per match':M.soccer?'Goals per game':'Points per game'}</td><td>${tn.pf}</td></tr><tr><td>${M.vb?'Sets lost per match':M.soccer?'Goals allowed per game':'Points allowed per game'}</td><td>${tn.pa}</td></tr>
+    <tr><td>At home</td><td>${tn.home}</td></tr><tr><td>On the road</td><td>${tn.away}</td></tr><tr><td>Streak</td><td>${tn.streak}</td></tr>
+    ${tn.best?html`<tr><td>Biggest win</td><td>${tn.best.mine}-${tn.best.th} ${tn.best.g.home===id?'vs':'at'} ${M.sideOf(tn.best.g,tn.best.g.home===id?'away':'home').name}</td></tr>`:null}</tbody></table></div>
+    <div class="note">Worked out from the scores in the app.</div><h2 class="eyebrow" style="margin-top:8px">Player leaders</h2>`:null}
+  ${tab==='stats'?(hasStats?html`<div class="grid">${tcats.map(c=>html`<div class="card"><div class="meta"><span>${c[1]}</span><span>${c[2]}</span></div>${fstats[c[0]].map(x=>html`<div class="trow"><span class="nm">${x.name}</span><span class="score" style="font-size:22px">${x.v}</span></div>`)}</div>`)}</div><a class="note" href=${mpLink(t,'stats','v',M.sport)} target="_blank" rel="noopener">Full stats on MaxPreps</a>`
+    :html`<div class="slot"><strong>No player stats posted yet</strong><span>${level==='v'?t.name+' has not posted '+M.sp.name+' player stats on MaxPreps.':'Player stats are varsity only.'}</span></div>`):null}
   ${tab==='roster'?(roster.length?html`<div class="note">${roster.length} players${level==='v'&&(t.rosterNote||{})[M.sport]?' · this is the '+t.rosterNote[M.sport]+' roster. This season\'s has not been posted yet.':''}</div><div class="list">${roster.map(p=>html`<div class="li"><span class="num">${p.n||'–'}</span><span class="grow"><b>${p.name}</b>${p.pos?html`<div class="sub">${p.pos}</div>`:null}</span><span class="tag">${p.gr||'—'}</span></div>`)}</div><a class="note" href=${mpLink(t,'roster',level,M.sport)} target="_blank" rel="noopener">Roster on MaxPreps</a>`
     :html`<div class="slot"><strong>No roster posted yet</strong><span>There is no ${M.sp.name} ${LV[level]} roster for ${t.name} yet. One can be pasted in from the admin screen.</span></div>`):null}
   ${tab==='photos'?html`<${Photos} M=${M} team=${id} favs=${favs} openSheet=${openSheet} ver=${ver}/>`:null}
@@ -459,7 +480,7 @@ function recap(M,g){
   const h=M.sideOf(g,'home'),a=M.sideOf(g,'away');
   if(g.hs===g.as)return{text:a.name+' and '+h.name+' finished tied '+g.as+'-'+g.hs+'.',auto:true};
   const w=g.hs>g.as?h:a,l=w===h?a:h,d=w.score-l.score,m=MARGIN[M.sport]||[3,8,25];
-  const verb=g.note==='FF'?'won by forfeit over':l.score===0&&M.fb?'shut out':d<=m[0]?'edged':d<=m[1]?'held off':d>=m[2]?'rolled past':'beat';
+  const verb=g.note==='FF'?'won by forfeit over':M.vb?(l.score===0?'swept':d===1?'outlasted':'beat'):l.score===0&&M.fb?'shut out':d<=m[0]?'edged':d<=m[1]?'held off':d>=m[2]?'rolled past':'beat';
   let t=w.name+' '+verb+' '+l.name+' '+w.score+'-'+l.score+(g.siteUnknown||g.note==='FF'?'':w===a?' on the road':' at home')+(g.note==='OT'?' in overtime':'')+'.';
   if(w.id){const r=M.recAt(w.id,g.date);t+=' '+w.name+' moved to '+r.all+(r.run>=3?' with '+r.run+' wins in a row':'')+'.'}
   if(l.id){const r=M.recAt(l.id,g.date);t+=' '+l.name+' fell to '+r.all+(r.run<=-3?', '+(-r.run)+' losses in a row':'')+'.'}
@@ -535,7 +556,7 @@ function InstallSheet({onClose}){
     ${d==='desktop'?html`<div class="note">On your phone, open <b style="color:var(--fg)">${SITE.replace('https://','')}</b> and follow the steps for your phone.</div>`:null}
     ${show.map(k=>html`<h3 class="eyebrow">${HOW[k][0]}</h3><div class="list">${HOW[k][1].map((s,i)=>html`<div class="li"><span class="num">${i+1}</span><span class="grow">${s}</span></div>`)}</div>`)}<//>`;
 }
-const GUIDE=[['Follow your teams','Tap Edit next to My Teams and pick your schools. Their latest score and next game show first.'],
+const GUIDE=[['Follow your teams and sports','Tap Edit next to My Teams to pick your schools and turn off sports you do not follow. Your teams\' latest score and next game show first.'],
   ['Scores, schedules and standings','Pick a sport and level, then use the tabs. Tap any team for its schedule, roster and standings.'],
   ['Tap a game','Finished games have a short recap and a Share score button that makes a picture for Facebook or a group chat. At the game? Tap Report score.'],
   ["Play Pick'em",'Pick the winner of each game before kickoff. Your picks show on the schedule, and the leaderboard ranks you against other fans.'],
@@ -557,7 +578,7 @@ function InstallBar({open}){
 }
 
 /* ---------- Report a score, and apply to be a trusted source ---------- */
-const PERIODS=sp=>sp==='football'?['1st Qtr','2nd Qtr','Halftime','3rd Qtr','4th Qtr','Final','Final/OT']:/soc$/.test(sp)?['1st Half','Halftime','2nd Half','Final','Final/OT']:['1st Qtr','2nd Qtr','Halftime','3rd Qtr','4th Qtr','Final','Final/OT'];
+const PERIODS=sp=>sp==='vb'?['Set 1','Set 2','Set 3','Set 4','Set 5','Final']:sp==='football'?['1st Qtr','2nd Qtr','Halftime','3rd Qtr','4th Qtr','Final','Final/OT']:/soc$/.test(sp)?['1st Half','Halftime','2nd Half','Final','Final/OT']:['1st Qtr','2nd Qtr','Halftime','3rd Qtr','4th Qtr','Final','Final/OT'];
 const ROLES=['Parent','Coach or school staff','Student','Booster club','Media','Fan'];
 function ReportSheet({M,g,onClose}){
   const h=M.sideOf(g,'home'),a=M.sideOf(g,'away');
@@ -724,14 +745,15 @@ function Admin({M,update,reset,go,level,setLevel,setSport,me,setMe,openSheet,ver
   <div class="banner">${DB.kind==='fire'?html`Signed in as ${me.email}. Changes save for everyone right away. <button class="link" style="min-height:0" onClick=${async()=>{await DB.signOut();setMe({...DB.me})}}>Sign out</button>`
     :html`The shared database is not connected yet, so changes here save in this browser only. <button class="link" style="min-height:0" onClick=${reset}>Reset my changes</button>`}</div>
   <div class="row" style="flex-wrap:wrap;margin-top:12px"><span class="note">App look</span><div class="chips">${LOOKS.map(([k,l])=>html`<button class="chip" aria-pressed=${(S.look||'board')===k} onClick=${()=>update(s=>{s.look=k})}>${l}</button>`)}</div></div>
-  <nav class="tabs" style="margin-top:14px" aria-label="Admin sections">${[['scores','Scores']].concat(COMMUNITY?[['inbox','Inbox'],['fans','Fans'],['reach','Reach']]:[],[['sponsors','Sponsors'],['rosters','Rosters'],['teams','Teams'],['review','Needs a look ('+S.flags.length+')']]).map(([k,l])=>html`<button class="tab" aria-current=${tab===k?'page':null} onClick=${()=>setTab(k)}>${l}</button>`)}</nav>
+  <nav class="tabs" style="margin-top:14px" aria-label="Admin sections">${[['scores','Scores']].concat(COMMUNITY?[['inbox','Inbox'],['fans','Fans'],['reach','Reach']]:[],[['sponsors','Sponsors'],['rosters','Rosters'],['stats','Stats'],['teams','Teams'],['review','Needs a look ('+S.flags.length+')']]).map(([k,l])=>html`<button class="tab" aria-current=${tab===k?'page':null} onClick=${()=>setTab(k)}>${l}</button>`)}</nav>
   <section class="sec">
-    ${tab==='scores'?html`<${Sports} M=${M} setSport=${setSport}/><${Levels} level=${level} setLevel=${setLevel} M=${M}/><${AdmScores} M=${M} update=${update}/>`:null}
+    ${tab==='scores'?html`<${Sports} M=${M} setSport=${setSport} all=${true}/><${Levels} level=${level} setLevel=${setLevel} M=${M}/><${AdmScores} M=${M} update=${update}/>`:null}
     ${tab==='inbox'?html`<${AdmInbox} M=${M} update=${update} openSheet=${openSheet} ver=${ver} bump=${bump}/>`:null}
-    ${tab==='fans'?html`<${Sports} M=${M} setSport=${setSport}/><${AdmFans} M=${M} update=${update}/>`:null}
+    ${tab==='fans'?html`<${Sports} M=${M} setSport=${setSport} all=${true}/><${AdmFans} M=${M} update=${update}/>`:null}
     ${tab==='reach'?html`<${AdmReach} M=${M}/>`:null}
     ${tab==='sponsors'?html`<${AdmSponsors} M=${M} update=${update}/>`:null}
     ${tab==='rosters'?html`<${AdmRoster} M=${M} update=${update}/>`:null}
+    ${tab==='stats'?html`<${AdmStats} M=${M} update=${update}/>`:null}
     ${tab==='teams'?html`<${AdmTeams} M=${M} update=${update}/>`:null}
     ${tab==='review'?html`<div class="list">${S.flags.map((f,i)=>html`<div class="li"><span class="grow">${f}</span><button class="btn sm" onClick=${()=>update(s=>{s.flags.splice(i,1)})}>Done</button></div>`)}${S.flags.length?null:html`<div class="li">Nothing needs a look.</div>`}</div>`:null}
   </section>`;
@@ -846,6 +868,24 @@ function AdmRoster({M,update}){
     ${ask?html`<button class="btn pri" onClick=${()=>{update(s=>{const T=s.teams.find(x=>x.id===tid);T.rosters[sp]=T.rosters[sp]||{};T.rosters[sp][lv]=parsed});setTxt('');setAsk(false)}}>Yes, replace ${cur.length} with ${parsed.length}</button><button class="btn" onClick=${()=>setAsk(false)}>Cancel</button>`
       :html`<button class="btn pri" disabled=${!parsed.length} onClick=${()=>setAsk(true)}>Replace ${t.name} ${LV[lv]} roster</button>`}</div>`;
 }
+function AdmStats({M,update}){
+  const S=M.S;const[tid,setTid]=useState(S.teams[0].id);const[sp,setSp]=useState(M.sport);const[nc,setNc]=useState('');const[rm,setRm]=useState('');
+  const t=M.T[tid],st=(t.stats||{})[sp]||{},all=catsFor(M,sp),cats=all.filter(c=>st[c[0]]).concat(Object.keys(st).filter(k=>!all.some(c=>c[0]===k)).map(k=>[k,k,'']));
+  const seedS=((SEED.teams.find(x=>x.id===tid)||{}).stats||{})[sp]||{},changed=JSON.stringify(st)!==JSON.stringify(seedS);
+  const mut=fn=>update(s=>{const T=s.teams.find(x=>x.id===tid);T.stats=T.stats||{};T.stats[sp]=T.stats[sp]||{};fn(T.stats[sp])});
+  const numv=v=>{const n=parseFloat(v);return isNaN(n)?0:n};
+  const missing=(sp==='football'?CATS.concat(all.filter(c=>!CATS.some(x=>x[0]===c[0]))):all).filter(c=>!st[c[0]]);
+  return html`<div class="formrow"><label class="field">Team<select id="st-team" value=${tid} onChange=${e=>setTid(e.target.value)}>${S.teams.map(x=>html`<option value=${x.id}>${x.name}</option>`)}</select></label><label class="field">Sport<select id="st-sport" value=${sp} onChange=${e=>setSp(e.target.value)}>${S.sports.map(x=>html`<option value=${x.id}>${x.name}</option>`)}</select></label></div>
+  <div class="note">Varsity player leaders for ${t.name}. Typing saves it. What you enter here replaces what came from MaxPreps for this team and sport.</div>
+  ${cats.map(c=>html`<h2 class="eyebrow" style="margin-top:8px">${c[1]}${c[2]?' · '+c[2]:''}</h2>
+    <div class="list">${(st[c[0]]||[]).map((x,i)=>html`<div class="li" style="gap:6px;padding:6px 8px"><input class="in" style="flex:3;min-width:0" aria-label="Player" value=${x.name} onInput=${e=>mut(o=>{o[c[0]][i].name=e.target.value})}/><input class="in" style="width:84px;flex:none;text-align:center" inputmode="decimal" aria-label=${c[1]+' for '+x.name} value=${x.v} onChange=${e=>mut(o=>{o[c[0]][i].v=numv(e.target.value)})}/><button class="btn sm" style="padding:0 10px;flex:none" aria-label=${'Remove '+x.name} onClick=${()=>{const k=c[0]+i;if(rm===k){mut(o=>{o[c[0]].splice(i,1);if(!o[c[0]].length)delete o[c[0]]});setRm('')}else setRm(k)}}>${rm===c[0]+i?'Sure?':'✕'}</button></div>`)}</div>
+    <div><button class="btn sm" onClick=${()=>mut(o=>{o[c[0]].push({name:'New player',v:0})})}>Add a player to ${c[1]}</button></div>`)}
+  ${cats.length?null:html`<div class="slot"><strong>No stats for this team and sport yet</strong><span>Add a category below, then add players to it.</span></div>`}
+  <h2 class="eyebrow" style="margin-top:12px">Add a category</h2>
+  ${missing.length?html`<div class="chips">${missing.map(c=>html`<button class="chip" onClick=${()=>mut(o=>{o[c[0]]=[{name:'New player',v:0}]})}>${c[1]}</button>`)}</div>`:null}
+  ${html`<div class="formrow"><label class="field">Category name<input id="st-newcat" value=${nc} onInput=${e=>setNc(e.target.value)} placeholder="Points per game"/></label><button class="btn" disabled=${!nc.trim()||!!st[nc.trim()]} onClick=${()=>{const k=nc.trim().replace(/[.\/|]/g,' ');mut(o=>{o[k]=[{name:'New player',v:0}]});setNc('')}}>Add category</button></div>`}
+  ${changed?html`<div><button class="btn" onClick=${()=>update(s=>{const T=s.teams.find(x=>x.id===tid);T.stats=T.stats||{};T.stats[sp]=clone(seedS)})}>Undo all my changes to these stats</button></div>`:null}`;
+}
 function AdmTeams({M,update}){
   const set=(id,fn)=>update(s=>fn(s.teams.find(x=>x.id===id)));
   return html`<div class="note">One MaxPreps link per team and sport. The app adds /schedule, /roster, /stats and /standings itself.</div>
@@ -868,9 +908,10 @@ function App(){
   const[patch,setPatchRaw]=useState(()=>ls.json('pb_patch')||migrateOld());const[live,setLive]=useState(null);
   const[me,setMe]=useState({...DB.me});const[ver,setVer]=useState(0);const[toast,setToast]=useState('');const[favs,setFavs]=useState(loadFavs);
   const[view,setView]=useState({v:'home'});const[homeTab,setHomeTab]=useState(()=>({'#vote':'players','#picks':'picks','#photos':'photos','#playoffs':'playoffs'})[location.hash]||'scores');
-  const[sheet,setSheet]=useState(null);const[level,setLevel]=useState('v');const[sport,setSportRaw]=useState('football');
+  const[sheet,setSheet]=useState(null);const[level,setLevel]=useState('v');const[sport,setSportRaw]=useState(()=>{const h=loadHidden(),f=SEED.sports.find(x=>x.on&&!h.includes(x.id));return f?f.id:'football'});
   const pref=useRef(patch),saveT=useRef(null),toastT=useRef(null);
-  const[picks,setPicks]=useState({});
+  const[picks,setPicks]=useState({});const[hidden,setHidden]=useState(loadHidden);
+  const toggleSport=id=>setHidden(h=>{const n=h.includes(id)?h.filter(x=>x!==id):h.concat(id);ls.set('pb_hide_sports',JSON.stringify(n));return n});
   useEffect(()=>{PICKED=(g,k)=>setPicks(p=>({...p,[g]:k}));if(COMMUNITY)dbReady.then(()=>DB.list('picks',[['uid','==',DB.me.uid]])).then(r=>{const o={};r.forEach(x=>{if(x.pick)o[x.game]=x.pick});setPicks(p=>({...o,...p}))}).catch(()=>{});
     if(!ls.get('pb_guide')&&location.hash!=='#admin'){ls.set('pb_guide','1');setSheet({k:'guide'})}},[]);
   const[adm,setAdm]=useState(SHOW_ADMIN);useEffect(()=>{const h=()=>{if(location.hash==='#admin')setAdm(true)};window.addEventListener('hashchange',h);return()=>window.removeEventListener('hashchange',h)},[]);
@@ -882,7 +923,7 @@ function App(){
     return()=>{off.forEach(f=>f&&f());document.removeEventListener('visibilitychange',h)}},[]);
   useEffect(()=>{document.documentElement.setAttribute('data-look',S.look||'board')},[S.look]);
   const setSport=id=>{setSportRaw(id);const sp=S.sports.find(x=>x.id===id);if(sp&&!(sp.levels||['v']).includes(level))setLevel('v')};
-  const M=useMemo(()=>{const m=model(S,sport,level);m.picks=picks;return m},[S,sport,level,picks]);
+  const M=useMemo(()=>{const m=model(S,sport,level);m.picks=picks;m.hidden=hidden;return m},[S,sport,level,picks,hidden]);
   const update=fn=>{const n=applyPatch(SEED,pref.current,null);fn(n);const p=derivePatch(n);setPatch(p);
     clearTimeout(saveT.current);saveT.current=setTimeout(()=>{saveT.current=null;dbReady.then(()=>DB.set('state','admin',pref.current)).catch(e=>{console.warn(e);SAY('That change did not save for everyone. Check your connection.')})},700)};
   const reset=()=>{setPatch({});dbReady.then(()=>DB.set('state','admin',{})).catch(()=>{})};
@@ -904,7 +945,7 @@ function App(){
     ${sheet&&sheet.k==='guide'?html`<${GuideSheet} onClose=${close} openSheet=${setSheet}/>`:null}
     ${sheet&&sheet.k==='upload'?html`<${UploadSheet} M=${M} team=${sheet.team} onClose=${close} onDone=${bump}/>`:null}
     ${sheet&&sheet.k==='photo'?html`<${PhotoSheet} M=${M} p=${sheet.p} onClose=${close} onDone=${bump}/>`:null}
-    ${sheet&&sheet.k==='favs'?html`<${FavSheet} M=${M} favs=${favs} toggle=${toggle} onClose=${close}/>`:null}
+    ${sheet&&sheet.k==='favs'?html`<${FavSheet} M=${M} favs=${favs} toggle=${toggle} toggleSport=${toggleSport} onClose=${close}/>`:null}
     ${sheet&&sheet.k==='search'?html`<${SearchSheet} M=${M} go=${go} setSport=${setSport} setLevel=${setLevel} onClose=${close}/>`:null}
     ${sheet&&sheet.k==='donate'?html`<${DonateSheet} t=${M.T[sheet.id]} onClose=${close}/>`:null}
     ${toast?html`<div class="toast" role="status">${toast}</div>`:null}
