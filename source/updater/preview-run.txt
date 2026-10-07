@@ -1,0 +1,184 @@
+built 425 KB
+ok   football|v|bla 9 
+ok   football|v|bon 9 
+ok   football|v|cen 9 
+ok   football|v|hig 9 
+ok   football|v|hil 9 
+ok   football|v|idf 9 
+ok   football|v|mad 9 
+ok   football|v|poc 9 
+ok   football|v|rig 9 
+ok   football|v|she 9 
+ok   football|v|sky 9 
+ok   football|v|thu 9 
+ok   football|v|twi 9 
+ok   football|jv|bla 10 
+ok   football|jv|bon 10 
+ok   football|jv|cen 8 
+ok   football|jv|hig 9 
+ok   football|jv|hil 7 
+ok   football|jv|idf 5 
+ok   football|jv|mad 8 
+ok   football|jv|poc 9 
+ok   football|jv|rig 10 
+ok   football|jv|she 4 
+ok   football|jv|sky 8 
+ok   football|jv|thu 9 
+ok   football|jv|twi 6 
+ok   football|fr|bla 9 
+ok   football|fr|bon 9 
+ok   football|fr|cen 7 
+ok   football|fr|hig 9 
+ok   football|fr|hil 6 
+ok   football|fr|idf 4 
+ok   football|fr|mad 8 
+ok   football|fr|poc 2 
+ok   football|fr|rig 8 
+ok   football|fr|she 9 
+ok   football|fr|sky 8 
+ok   football|fr|thu 9 
+ok   football|fr|twi 6 
+ok   bsoc|v|bla 17 
+ok   bsoc|v|bon 16 
+ok   bsoc|v|cen 17 
+ok   bsoc|v|hig 17 
+ok   bsoc|v|hil 17 
+ok   bsoc|v|idf 18 
+ok   bsoc|v|mad 17 
+ok   bsoc|v|poc 17 
+ok   bsoc|v|rig 16 
+ok   bsoc|v|she 17 
+ok   bsoc|v|sky 18 
+ok   bsoc|v|thu 17 
+ok   bsoc|v|twi 15 
+ok   gsoc|v|bla 15 
+ok   gsoc|v|bon 17 
+ok   gsoc|v|cen 17 
+ok   gsoc|v|hig 18 
+ok   gsoc|v|hil 18 
+ok   gsoc|v|idf 18 
+ok   gsoc|v|mad 17 
+ok   gsoc|v|poc 17 
+ok   gsoc|v|rig 18 
+ok   gsoc|v|she 16 
+ok   gsoc|v|sky 17 
+ok   gsoc|v|thu 17 
+ok   gsoc|v|twi 16 
+ok   bbb|v|bla 3 
+ok   bbb|v|bon 6 
+ok   bbb|v|cen 2 
+ok   bbb|v|hig 6 
+ok   bbb|v|hil 4 
+ok   bbb|v|idf 3 
+ok   bbb|v|mad 7 
+ok   bbb|v|poc 20 
+ok   bbb|v|rig 9 
+ok   bbb|v|she 4 
+ok   bbb|v|sky 3 
+ok   bbb|v|thu 14 
+ok   bbb|v|twi 16 
+ok   bbb|jv|bla 2 
+ok   bbb|jv|bon 3 
+ok   bbb|jv|cen 2 
+ok   bbb|jv|hig 2 
+ok   bbb|jv|hil 2 
+ok   bbb|jv|idf 2 
+ok   bbb|jv|mad 2 
+ok   bbb|jv|poc 17 
+ok   bbb|jv|rig 6 
+ok   bbb|jv|she 2 
+ok   bbb|jv|sky 2 
+ok   bbb|jv|thu 1 
+ok   bbb|jv|twi 2 
+ok   bbb|fr|bla 2 
+ok   bbb|fr|bon 3 
+ok   bbb|fr|cen 2 
+ok   bbb|fr|hig 2 
+ok   bbb|fr|hil 2 
+ok   bbb|fr|idf 2 
+ok   bbb|fr|mad 2 
+ok   bbb|fr|poc 17 
+ok   bbb|fr|rig 6 
+ok   bbb|fr|she 2 
+ok   bbb|fr|sky 2 
+ok   bbb|fr|thu 1 
+ok   bbb|fr|twi 2 
+ok   gbb|v|bla 7 
+ok   gbb|v|bon 8 
+ok   gbb|v|cen 9 
+ok   gbb|v|hig 17 
+ok   gbb|v|hil 17 
+ok   gbb|v|idf 6 
+ok   gbb|v|mad 6 
+ok   gbb|v|poc 19 
+ok   gbb|v|rig 7 
+ok   gbb|v|she 8 
+ok   gbb|v|sky 19 
+ok   gbb|v|thu 7 
+ok   gbb|v|twi 16 
+ok   gbb|jv|bla 2 
+ok   gbb|jv|bon 3 
+ok   gbb|jv|cen 3 
+ok   gbb|jv|hig 2 
+ok   gbb|jv|hil 2 
+ok   gbb|jv|idf 2 
+ok   gbb|jv|mad 1 
+ok   gbb|jv|poc 19 
+ok   gbb|jv|rig 4 
+ok   gbb|jv|she 4 
+ok   gbb|jv|sky 3 
+ok   gbb|jv|thu 1 
+ok   gbb|jv|twi 3 
+ok   gbb|fr|bla 2 
+ok   gbb|fr|bon 3 
+ok   gbb|fr|cen 3 
+ok   gbb|fr|hig 2 
+ok   gbb|fr|hil 2 
+ok   gbb|fr|idf 2 
+ok   gbb|fr|mad 1 
+ok   gbb|fr|poc 18 
+ok   gbb|fr|rig 2 
+ok   gbb|fr|she 4 
+ok   gbb|fr|sky 2 
+ok   gbb|fr|thu 1 
+ok   gbb|fr|twi 3 
+ok   roster|bbb|bla 13 25-26 
+ok   roster|bbb|bon 0 25-26 
+ok   roster|bbb|cen 21 25-26 
+ok   roster|bbb|hig 18 25-26 
+ok   roster|bbb|hil 14 25-26 
+ok   roster|bbb|idf 23 25-26 
+ok   roster|bbb|mad 12 25-26 
+ok   roster|bbb|poc 0 25-26 
+ok   roster|bbb|rig 14 25-26 
+ok   roster|bbb|she 10 25-26 
+ok   roster|bbb|sky 21 25-26 
+ok   roster|bbb|thu 15 25-26 
+ok   roster|bbb|twi 15 25-26 
+ok   roster|gbb|bla 15 25-26 
+ok   roster|gbb|bon 21 25-26 
+ok   roster|gbb|cen 11 25-26 
+ok   roster|gbb|hig 13 25-26 
+ok   roster|gbb|hil 15 25-26 
+ok   roster|gbb|idf 7 25-26 
+ok   roster|gbb|mad 15 25-26 
+ok   roster|gbb|poc 14 25-26 
+ok   roster|gbb|rig 12 25-26 
+ok   roster|gbb|she 9 25-26 
+ok   roster|gbb|sky 15 25-26 
+ok   roster|gbb|thu 10 25-26 
+ok   roster|gbb|twi 12 25-26 
+
+169 pages read, 0 failed
+732 games, 390 with scores, 9 notes for the admin
+  NOTE Football Freshman records that differ from MaxPreps: Century app 1-4, MaxPreps 1-3; Hillcrest app 1-5, MaxPreps 0-3; Twin Falls app 6-0, MaxPreps 5-0
+  NOTE Rigby: no varsity football roster posted on MaxPreps — paste one in under Rosters
+  NOTE Rigby and Madison: no football player stats posted on MaxPreps
+  NOTE Hillcrest: MaxPreps varsity football roster lists no positions
+  NOTE Hillcrest freshman roster: Ike Bowers, Joseph Garvin, Logan Whitaker and Ryan Johnson have no jersey number on the sheet
+  NOTE Rosters and stat leaders are a snapshot from October 6 and do not update automatically
+  NOTE Soccer: rosters and player stats are not loaded
+  NOTE Basketball: the roster shown is last season's (2025-26) until a school posts this season's on MaxPreps
+  NOTE Wrestling: no school has a schedule or roster on MaxPreps, so it is not in the app yet
+
+Updated: schedule or notes changed
