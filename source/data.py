@@ -216,6 +216,8 @@ STATED = {"jv": dict(bla="5-2",bon="3-4",cen="2-2",hig="1-1",hil="2-2",idf="0-3"
 HIL_FR = "2,Elijah Zuniga;4,Weston Harris;5,Gunnar Belnap;11,Jayce Clay;12,Kasten Horn;13,Kouper Keckley;14,Anthony Patrick;15,Joey Nichols;17,Ammon Wilson;19,Jace Trane;21,Jordan Henry;22,Grant Carr;27,Mitchell Skifton;29,Kaden Tarbet;31,Luke Powell;32,Mason Witte;33,Luke Simpson;35,Jakob Vollmer;40,Easton Howell;44,Stockton Sessions;55,Bo Bojorquez;58,Dax Draper;59,Kycen Jackson;64,Kristopher Moore;65,Easton Floyd;68,Dominic Labra;74,Emmett Allen;75,Blake Bateman;76,Maverick Jennings;77,Owen Wardar;78,Jay Cavness;85,Nash Benson;,Ike Bowers;,Joseph Garvin;,Logan Whitaker;,Ryan Johnson"
 
 from datetime import date
+from soccer_data import SOCCER, SOCCER_STATED, SOCCER_OUTSIDE_CONF, SOCCER_REGULAR_SEASON_ENDS
+
 def iso(d):
     m, day = d.split("/")
     return "2026-%02d-%02d" % (int(m), int(day))
@@ -228,7 +230,7 @@ def parse(res):
     t = re.match(r"(\d+):(\d+)\s*(am|pm)", res or "", re.I)
     return None, "", ("%s:%s %s" % (t.group(1), t.group(2), t.group(3).upper()) if t else None)
 
-def merge(level, sched, strict, flags):
+def merge(sport, level, sched, strict, flags, tol, outside_conf, conf_until=None):
     """Each game between two app teams is listed on both schools' pages. Pair the listings up and cross-check."""
     rows = []
     for tid, text in sched.items():
@@ -239,19 +241,18 @@ def merge(level, sched, strict, flags):
             sc, note, tm = parse(res)
             rows.append(dict(tid=tid, date=iso(d), ha=ha, opp=opp, oid=NAME2ID.get(opp), sc=sc, note=note, tm=tm, used=False, auth=len(f) > 4))
     games, lone = [], 0
+    label = (sport + " " + level).upper()
     for r in rows:
         if r["used"]: continue
         r["used"] = True
         tid, oid = r["tid"], r["oid"]
         if not oid:
             home = r["ha"] == "H"
-            g = dict(home=tid if home else None, away=None if home else tid, outside=r["opp"],
-                     outsideConf=r["opp"] in OUTSIDE_CONF.get(tid, ()),
-                     hs=None, **{"as": None})
+            g = dict(home=tid if home else None, away=None if home else tid, outside=r["opp"], hs=None, **{"as": None})
             if r["sc"]: g["hs"], g["as"] = (r["sc"] if home else r["sc"][::-1])
             date_, tm, note = r["date"], r["tm"], r["note"]
+            conf = r["opp"] in outside_conf.get(tid, ())
         else:
-            tol = 0 if strict else 3
             c = sorted([x for x in rows if not x["used"] and x["tid"] == oid and x["oid"] == tid and abs(dnum(x["date"]) - dnum(r["date"])) <= tol],
                        key=lambda x: abs(dnum(x["date"]) - dnum(r["date"])))
             p = c[0] if c else None
@@ -259,7 +260,7 @@ def merge(level, sched, strict, flags):
             mine = {tid: r["sc"][0], oid: r["sc"][1]} if r["sc"] else None
             theirs = None
             g = dict(home=home, away=away)
-            key = "%s %s %s-%s" % (level.upper(), r["date"], TEAMS[away][0], TEAMS[home][0])
+            key = "%s %s %s-%s" % (label, r["date"], TEAMS[away][0], TEAMS[home][0])
             auth = r if r["auth"] else (p if p and p["auth"] else None)
             if p: p["used"] = True
             if auth:  # a row the owner corrected by hand wins outright
@@ -276,52 +277,59 @@ def merge(level, sched, strict, flags):
                 if p["ha"] == r["ha"]:
                     g["siteUnknown"] = True
                     if strict: flags.append(key + ": both schools list this as a home game — confirm where it was played")
-            elif not auth:
+            else:
                 assert not strict, ("listed by one school only", key)
                 lone += 1
+                print("   one school only:", key)
             sc = mine or theirs
             g["hs"], g["as"] = (sc[home], sc[away]) if sc else (None, None)
             src = r if (r["sc"] or not p or not p["sc"]) else p
             date_, tm, note = src["date"], r["tm"] or (p and p["tm"]), r["note"] or (p["note"] if p else "")
-        if level == "v": tm = "6:00 PM" if date_ == "2026-10-03" else "7:00 PM"
+            conf = TEAMS[home][2] == TEAMS[away][2]
+        post = bool(conf_until and date_ > conf_until)
+        if post: conf = False
+        if sport == "football" and level == "v": tm = "6:00 PM" if date_ == "2026-10-03" else "7:00 PM"
         ids = sorted(x for x in (g["home"], g["away"]) if x)
-        g.update(level=level, date=date_, time=tm, note=note, sponsors=[], sponsorMode="winner")
-        g["id"] = level + ":" + date_ + ":" + ":".join(ids) + (":x" if len(ids) == 1 else "")
+        g.update(sport=sport, level=level, date=date_, time=tm, note=note, conf=bool(conf), post=post, sponsors=[], sponsorMode="winner")
+        pre = level if sport == "football" else sport
+        g["id"] = pre + ":" + date_ + ":" + ":".join(ids) + (":x" if len(ids) == 1 else "")
         games.append(g)
     seen = {}
-    for g in games:  # same pair can meet twice at lower levels; keep ids unique
+    for g in games:
         seen[g["id"]] = seen.get(g["id"], 0) + 1
         if seen[g["id"]] > 1: g["id"] += ":" + str(seen[g["id"]])
     return sorted(games, key=lambda g: (g["date"], g["id"])), lone
 
-def record(games, tid):
-    w = l = cw = cl = 0
-    conf = TEAMS[tid][2]
+def record(games, tid, ties=False):
+    r = dict(w=0, l=0, t=0, cw=0, cl=0, ct=0)
     for g in games:
         if tid not in (g["home"], g["away"]) or g["hs"] is None: continue
         mine, theirs = (g["hs"], g["as"]) if g["home"] == tid else (g["as"], g["hs"])
-        other = g["away"] if g["home"] == tid else g["home"]
-        isconf = (TEAMS[other][2] == conf) if other else g.get("outsideConf")
-        if mine > theirs: w += 1; cw += isconf
-        elif mine < theirs: l += 1; cl += isconf
-    return "%d-%d" % (w, l), "%d-%d" % (cw, cl)
+        k = "w" if mine > theirs else "l" if mine < theirs else "t"
+        r[k] += 1
+        if g["conf"]: r["c" + k] += 1
+    f = lambda w, l, t: "%d-%d" % (w, l) + ("-%d" % t if t else "")
+    return f(r["w"], r["l"], r["t"]), f(r["cw"], r["cl"], r["ct"])
 
 def build():
     flags, allgames = [], []
-    vg, _ = merge("v", SCHED, True, flags); allgames += vg
+    vg, _ = merge("football", "v", SCHED, True, flags, 0, OUTSIDE_CONF); allgames += vg
     for tid, t in TEAMS.items():
-        calc = record(vg, tid); ok = calc == (t[4], t[5])
-        print("V  %-14s %s conf %s (MaxPreps %s, %s) %s" % (t[0], calc[0], calc[1], t[4], t[5], "ok" if ok else "MISMATCH"))
-        assert ok
+        assert record(vg, tid) == (t[4], t[5]), (t[0], record(vg, tid))
+    print("FOOTBALL V", len(vg), "games; all 13 records match MaxPreps")
     for lv in ("jv", "fr"):
-        g, lone = merge(lv, LOWER[lv], False, flags); allgames += g
+        g, lone = merge("football", lv, LOWER[lv], False, flags, 3, {}); allgames += g
+        diff = ["%s app %s vs MaxPreps %s" % (t[0], record(g, tid)[0], STATED[lv][tid]) for tid, t in TEAMS.items() if record(g, tid)[0] != STATED[lv][tid]]
+        print("FOOTBALL", lv.upper(), len(g), "games,", sum(1 for x in g if x["hs"] is not None), "scored; differs:", diff)
+        if diff: flags.append("%s football records differ from the school's own page where the opponent posted a score the school did not: %s" % ("JV" if lv == "jv" else "Freshman", "; ".join(diff)))
+    for sp, nm in (("bsoc", "Boys soccer"), ("gsoc", "Girls soccer")):
+        g, lone = merge(sp, "v", SOCCER[sp], False, flags, 1, SOCCER_OUTSIDE_CONF[sp], SOCCER_REGULAR_SEASON_ENDS); allgames += g
         diff = []
         for tid, t in TEAMS.items():
-            calc = record(g, tid)[0]
-            if calc != STATED[lv][tid]: diff.append("%s app %s vs MaxPreps %s" % (t[0], calc, STATED[lv][tid]))
-        print(lv.upper(), len(g), "games,", sum(1 for x in g if x["hs"] is not None), "with scores,", lone, "listed by one school only")
-        for d in diff: print("   record differs:", d)
-        if diff: flags.append("%s records differ from the school's own page where the opponent posted a score the school did not: %s" % (lv.upper() if lv == "jv" else "Freshman", "; ".join(diff)))
+            if record(g, tid) != SOCCER_STATED[sp][tid]: diff.append("%s app %s (conf %s) vs MaxPreps %s (conf %s)" % ((t[0],) + record(g, tid) + SOCCER_STATED[sp][tid]))
+        print(nm, len(g), "games,", sum(1 for x in g if x["hs"] is not None), "scored,", lone, "one-school-only")
+        for d in diff: print("   differs:", d)
+        if diff: flags.append(nm + " records that differ from MaxPreps: " + "; ".join(diff))
     teams = []
     for tid, (name, mascot, conf, url, ovr, cf) in TEAMS.items():
         roster = []
@@ -333,15 +341,19 @@ def build():
         for part in filter(None, STATS[tid].split("|")):
             cat, rest = part.split(":")
             stats[cat] = [dict(name=x.split("=")[0], v=float(x.split("=")[1])) for x in rest.split(",")]
-        teams.append(dict(id=tid, name=name, mascot=mascot, conf=conf, links=dict(football=url),
-                          rosters=dict(v=roster, jv=[], fr=fr), stats=stats, favBiz=[]))
-    flags += ["Rigby: no varsity roster posted on MaxPreps — paste one in under Rosters",
-              "Rigby: no player stats posted on MaxPreps", "Madison: no player stats posted on MaxPreps",
-              "Hillcrest: MaxPreps varsity roster lists no positions",
+        teams.append(dict(id=tid, name=name, mascot=mascot, conf=conf,
+                          links=dict(football=url, bsoc=url.replace("/football/", "/soccer/"), gsoc=url.replace("/football/", "/soccer/girls/")),
+                          rosters=dict(football=dict(v=roster, jv=[], fr=fr), bsoc=dict(v=[]), gsoc=dict(v=[])),
+                          stats=dict(football=stats, bsoc={}, gsoc={}), favBiz=[]))
+    flags += ["Rigby: no varsity football roster posted on MaxPreps — paste one in under Rosters",
+              "Rigby: no football player stats posted on MaxPreps", "Madison: no football player stats posted on MaxPreps",
+              "Hillcrest: MaxPreps varsity football roster lists no positions",
               "Hillcrest freshman roster: Ike Bowers, Joseph Garvin, Logan Whitaker and Ryan Johnson have no jersey number on the sheet",
-              "JV and Freshman: some played games have no score on MaxPreps — add them under Scores when you find them"]
-    data = dict(season="2026", pulled="2026-10-06", sports=[dict(id="football", name="Football", on=True)],
-                teams=teams, games=allgames, businesses=[], flags=flags)
+              "JV and Freshman football: some played games have no score on MaxPreps — add them under Scores when you find them",
+              "Soccer: rosters and player stats are not loaded yet"]
+    sports = [dict(id="football", name="Football", on=True, levels=["v", "jv", "fr"]),
+              dict(id="bsoc", name="Boys Soccer", on=True, levels=["v"]), dict(id="gsoc", name="Girls Soccer", on=True, levels=["v"])]
+    data = dict(season="2026", pulled="2026-10-06", sports=sports, teams=teams, games=allgames, businesses=[], flags=flags)
     json.dump(data, open("data.json", "w"), separators=(",", ":"))
     print(len(allgames), "games total;", len(flags), "flags")
     for f in flags: print("  FLAG", f)
