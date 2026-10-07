@@ -1,0 +1,26 @@
+[
+ {"sport":"gsoc","title":"5A District 5-6 Girls Soccer","source":"seeds and scores reported by KIFI Local News 8 and MaxPreps; later rounds fill in as they are posted",
+  "rounds":[
+   {"name":"Quarterfinals","games":[
+    {"date":"2026-10-06","site":"at Hillcrest","a":{"seed":8,"id":"bla","name":"Blackfoot","score":1},"b":{"seed":1,"id":"hil","name":"Hillcrest","score":13}},
+    {"date":"2026-10-06","site":"at Idaho Falls","a":{"seed":5,"id":"she","name":"Shelley","score":0},"b":{"seed":4,"id":"idf","name":"Idaho Falls","score":9}},
+    {"date":"2026-10-06","site":"at Pocatello","a":{"seed":6,"id":"bon","name":"Bonneville","score":1},"b":{"seed":3,"id":"poc","name":"Pocatello","score":9}},
+    {"date":"2026-10-06","site":"at Skyline","a":{"seed":7,"id":"cen","name":"Century","score":0},"b":{"seed":2,"id":"sky","name":"Skyline","score":10}}]},
+   {"name":"Semifinals","games":[
+    {"date":"2026-10-08","time":"8:00 PM","site":"at Hillcrest","a":{"seed":4,"id":"idf","name":"Idaho Falls"},"b":{"seed":1,"id":"hil","name":"Hillcrest"}},
+    {"a":{"seed":3,"id":"poc","name":"Pocatello"},"b":{"seed":2,"id":"sky","name":"Skyline"}}]},
+   {"name":"Championship","games":[{"a":{},"b":{}}]}]},
+ {"sport":"gsoc","title":"6A District 5-6 Girls Soccer","source":"seeds and scores reported by KIFI Local News 8 and MaxPreps",
+  "rounds":[
+   {"name":"Semifinals","games":[
+    {"date":"2026-10-06","site":"at Highland","a":{"seed":4,"id":"thu","name":"Thunder Ridge","score":0},"b":{"seed":1,"id":"hig","name":"Highland","score":7}},
+    {"date":"2026-10-06","site":"at Madison","a":{"seed":3,"id":"rig","name":"Rigby","score":2},"b":{"seed":2,"id":"mad","name":"Madison","score":1}}]},
+   {"name":"Next round","games":[
+    {"date":"2026-10-08","site":"at Highland","a":{"seed":3,"id":"rig","name":"Rigby"},"b":{"seed":1,"id":"hig","name":"Highland"}}]}]},
+ {"sport":"gsoc","title":"5A Great Basin Girls Soccer","source":"seeds reported by KMVT; play-in scores were not published",
+  "rounds":[
+   {"name":"Semifinals","games":[
+    {"date":"2026-10-08","time":"4:30 PM","site":"at Twin Falls","a":{"seed":4,"name":"Jerome"},"b":{"seed":1,"id":"twi","name":"Twin Falls"}},
+    {"date":"2026-10-08","a":{"name":"Canyon Ridge or Minico"},"b":{"seed":2,"name":"Wood River"}}]},
+   {"name":"Championship","games":[{"a":{},"b":{}}]}]}
+]

@@ -71,6 +71,39 @@ def parse_page(page):
                   conf=(sd.get("leagueStanding") or {}).get("conferenceWinLossTies"))
     return rows, stated
 
+def parse_roster(page):
+    """Roster rows are positional too: [8] jersey  [12] position  [33] full name  [36] grade ('Sr.')."""
+    m = re.search(r'(?s)<script id="__NEXT_DATA__"[^>]*>(.*?)</script>', page)
+    if not m: raise ValueError("page has no roster data block")
+    rows = json.loads(m.group(1))["props"]["pageProps"].get("athleteData")
+    if rows is None: raise ValueError("page has no roster list")
+    out = []
+    for r in rows:
+        if len(r) < 37: raise ValueError("roster record has %d fields, expected 37" % len(r))
+        name = (r[33] or "").strip()
+        if not name or re.match(r"Player #", name): continue
+        out.append(dict(n=str(r[8] or ""), name=name, pos=(r[12] or "").strip(), gr=(r[36] or "").strip(". ")))
+    return out
+
+def pull_rosters(out):
+    """Varsity rosters for sports that ask for them. If this season's is empty, last season's is used and labeled."""
+    for sp in CFG["sports"]:
+        if not sp.get("on") or not sp.get("roster"): continue
+        for t in CFG["teams"]:
+            key = "roster|%s|%s" % (sp["id"], t["id"])
+            res = dict(ok=True, rows=[], stated={}, players=[], season="")
+            try:
+                for season in ("", sp["roster"].get("lastSeason", "")):
+                    status, page = fetch(t["base"] + sp["paths"]["v"] + (season + "/" if season else "") + "roster/")
+                    if status != 200: raise ValueError("could not load (%s)" % str(page)[:80])
+                    res["players"], res["season"] = parse_roster(page), season
+                    time.sleep(0.6)
+                    if res["players"] or not sp["roster"].get("lastSeason"): break
+            except Exception as e:
+                res = dict(ok=False, error=str(e)[:200], rows=[], stated={}, players=[], season="")
+            out[key] = res
+            print(("ok  " if res["ok"] else "FAIL"), key, len(res["players"]), res.get("season"), res.get("error", ""))
+
 def pull():
     out = {}
     for sp in CFG["sports"]:
@@ -88,6 +121,7 @@ def pull():
                     out[key] = dict(ok=False, error=str(e)[:200], rows=[], stated={})
                 print(("ok  " if out[key]["ok"] else "FAIL"), key, len(out[key]["rows"]), out[key].get("error", ""))
                 time.sleep(0.6)
+    pull_rosters(out)
     return out
 
 # ---------------------------------------------------------------- putting games together
@@ -146,7 +180,7 @@ def merge(sport, level, pulled, flags):
         post = bool(known) and not conf and any(x not in (0, 1) for x in known)
         ids = sorted(x for x in (g["home"], g["away"]) if x)
         g.update(sport=sport, level=level, date=date_, time=tm, note=note, conf=conf, post=post, sponsors=[], sponsorMode="winner")
-        g["id"] = (level if sport == "football" else sport) + ":" + date_ + ":" + ":".join(ids) + (":x" if len(ids) == 1 else "")
+        g["id"] = (level if sport == "football" else sport if level == "v" else sport + "-" + level) + ":" + date_ + ":" + ":".join(ids) + (":x" if len(ids) == 1 else "")
         games.append(g)
     seen = {}
     for g in games:
@@ -230,9 +264,19 @@ def main():
     teams = []
     for t in CFG["teams"]:
         st = STATIC["teams"].get(t["id"], {})
+        rosters, note = json.loads(json.dumps(st.get("rosters", {}))), {}
+        old = next((x for x in prev.get("teams", []) if x["id"] == t["id"]), {})
+        for sp in CFG["sports"]:
+            r = pulled.get("roster|%s|%s" % (sp["id"], t["id"]))
+            if r and r["ok"] and r["players"]:
+                rosters.setdefault(sp["id"], {})["v"] = r["players"]
+                if r["season"]: note[sp["id"]] = "20" + r["season"].replace("-", "-")
+            elif sp.get("roster") and (old.get("rosters", {}).get(sp["id"], {}).get("v")):   # a failed page keeps the roster the app had
+                rosters.setdefault(sp["id"], {})["v"] = old["rosters"][sp["id"]]["v"]
+                if old.get("rosterNote", {}).get(sp["id"]): note[sp["id"]] = old["rosterNote"][sp["id"]]
         teams.append(dict(id=t["id"], name=t["name"], mascot=t["mascot"], conf=t["conf"],
                           links={s["id"]: t["base"] + s["paths"]["v"] for s in CFG["sports"]},
-                          rosters=st.get("rosters", {}), stats=st.get("stats", {}), favBiz=[]))
+                          rosters=rosters, rosterNote=note, stats=st.get("stats", {}), favBiz=[]))
     sports = [dict(id=s["id"], name=s["name"], on=s.get("on", True), levels=s["levels"]) for s in CFG["sports"]]
     body = dict(season=CFG["season"], statsDate=STATIC.get("statsDate"), sports=sports, teams=teams, games=games,
                 businesses=prev.get("businesses", []), flags=flags)

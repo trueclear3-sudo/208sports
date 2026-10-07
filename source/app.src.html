@@ -1,6 +1,7 @@
+<meta charset="utf-8">
 <title>208 Pressbox</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Cabin+Sketch:wght@700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&family=Cabin+Sketch:wght@700&family=Patrick+Hand&display=swap">
 <style>
 /* Layout: one phone-width column that widens into a card grid on desktop. Palette is David's 208 Pressbox design; headings, tabs and scores are set in chalk lettering. */
 :root{
@@ -40,7 +41,7 @@ a{color:var(--accent)}
 .logo img{width:80%;height:80%;object-fit:contain}
 .logo.x{background:var(--line);color:var(--muted);font-family:var(--disp);font-weight:700}
 .add-ring{width:60px;height:60px;border-radius:30px;border:2px dashed var(--dash);display:flex;align-items:center;justify-content:center;color:var(--muted)}
-.tabs{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;border-top:1px solid var(--line);border-bottom:1px solid var(--line);overflow-x:auto}
+.tabs{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(max-content,1fr);border-top:1px solid var(--line);border-bottom:1px solid var(--line);overflow-x:auto}
 .tab{height:52px;border:0;border-bottom:3px solid transparent;background:none;color:var(--muted);font-family:var(--disp);font-weight:700;font-size:16px;letter-spacing:.5px;text-transform:uppercase;white-space:nowrap;padding:0 10px}
 .tab[aria-current=page]{color:var(--chalk);border-bottom-color:var(--accent)}
 .chips{display:flex;flex-wrap:wrap;gap:8px}
@@ -102,6 +103,52 @@ tr.me td{background:rgba(255,184,28,.08)}
 .flag{border-left:0}
 .tag{font-size:11px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);border:1px solid var(--line);border-radius:10px;padding:2px 8px;white-space:nowrap}
 @media(prefers-reduced-motion:no-preference){.chip,.btn,.tab{transition:background .15s,color .15s,border-color .15s}}
+
+.meta .live,.meta .no{color:var(--bad)} .meta .ok{color:var(--good)}
+.pkb{display:flex;align-items:center;gap:10px;width:100%;min-height:52px;padding:6px 10px;border:1px solid var(--line);border-radius:10px;background:none;font-size:16px;font-weight:600;text-align:left}
+.pkb .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pkb[aria-pressed=true]{border-color:var(--accent);background:rgba(255,184,28,.14)}
+.pkb:disabled{cursor:default;opacity:.85}
+.bar{flex-basis:100%;height:8px;background:var(--line);border-radius:4px;overflow:hidden}.bar i{display:block;height:100%;background:var(--accent)}
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:6px}
+.ph{padding:0;border:0;background:var(--card);aspect-ratio:1;border-radius:8px;overflow:hidden}.ph img{width:100%;height:100%;object-fit:cover;display:block}
+.toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;font-size:14px;z-index:30;max-width:calc(100% - 32px);text-align:center}
+.big{font-family:var(--disp);font-weight:700;font-size:40px;line-height:1;color:var(--chalk)}
+.btn:disabled{opacity:.5;cursor:default}
+input[type=file]{padding:8px}
+/* Look A: scoreboard. Black and gold, block numbers, square corners. */
+[data-look=score]{--bg:#0A0A0B;--card:#0A0A0B;--line:#33312D;--dash:#5A574F;--fg:#F5F2E9;--muted:#9A968C;--chalk:#F5F2E9;--disp:Anton,'Arial Narrow',sans-serif;--body:'Barlow Condensed','Arial Narrow',sans-serif}
+[data-look=score] body{font-size:17px;letter-spacing:.2px}
+[data-look=score] .brand span,[data-look=score] .brand b{filter:none}
+[data-look=score] .hdr{background:var(--accent);margin:0 -16px;padding:10px 16px}
+[data-look=score] .brand,[data-look=score] .brand b{color:#0A0A0B;font-weight:400}
+[data-look=score] .hdr .icon{background:none;border:2px solid #0A0A0B;color:#0A0A0B}
+[data-look=score] .card,[data-look=score] .btn,[data-look=score] .chip,[data-look=score] .icon,[data-look=score] .list,[data-look=score] .tablebox,[data-look=score] .slot,[data-look=score] .banner,[data-look=score] .sheet,[data-look=score] .in,[data-look=score] .field input,[data-look=score] .field select,[data-look=score] .field textarea,[data-look=score] .logo,[data-look=score] .pkb,[data-look=score] .ph,[data-look=score] .tag,[data-look=score] .bar,[data-look=score] .brand img,[data-look=score] .toast{border-radius:0}
+[data-look=score] .score,[data-look=score] .num,[data-look=score] .hero h1,[data-look=score] .big{font-weight:400}
+[data-look=score] .score{font-size:44px}[data-look=score] .trow:not(.lose) .score{color:var(--accent)}
+[data-look=score] .trow .nm{text-transform:uppercase;font-size:22px;font-weight:700;letter-spacing:.5px}[data-look=score] .trow.lose .nm{font-weight:600}
+[data-look=score] .tab,[data-look=score] .eyebrow,[data-look=score] th,[data-look=score] .pill,[data-look=score] .slot strong{font-family:var(--body);font-weight:700;letter-spacing:1.5px}
+[data-look=score] .tabs{border-top:0;border-bottom:2px solid var(--fg)}
+[data-look=score] .tab[aria-current=page]{background:var(--fg);color:var(--bg);border-bottom-color:var(--fg)}
+[data-look=score] .card{border-width:0 0 1px;padding:12px 2px}[data-look=score] .sheet .card,[data-look=score] .grid .card:has(.pkb){border-width:1px;padding:12px}
+[data-look=score] .meta{font-size:14px;letter-spacing:1.5px}[data-look=score] .meta span:last-child{background:var(--fg);color:var(--bg);padding:1px 8px}[data-look=score] .meta .up{background:var(--accent)}[data-look=score] .meta .live{background:var(--bad)}
+[data-look=score] .chip[aria-pressed=true]{color:#0A0A0B}[data-look=score] .chip,[data-look=score] .btn{font-weight:600;font-size:16px;text-transform:uppercase;letter-spacing:.8px}
+/* Look C: coach's chalkboard. Slate board in a wood frame, hand-drawn boxes, handwriting. */
+[data-look=board]{--bg:#1F2B27;--card:transparent;--line:#7C8A84;--dash:#7C8A84;--fg:#EEF0E8;--muted:#A9B5AF;--accent:#F2D15C;--chalk:#EEF0E8;--body:'Patrick Hand','Chalkboard SE',cursive}
+[data-look=board] body{background:#6B4A2B;font-size:18px}
+[data-look=board] .wrap{background:var(--bg);margin:10px auto;min-height:calc(100vh - 20px);max-width:1020px}
+@media(max-width:1060px){[data-look=board] .wrap{margin:10px}}
+[data-look=board] .card,[data-look=board] .list,[data-look=board] .tablebox,[data-look=board] .slot,[data-look=board] .banner,[data-look=board] .pkb,[data-look=board] .icon,[data-look=board] .chip,[data-look=board] .btn{border-radius:255px 15px 225px 15px/15px 225px 15px 255px;border-width:2px}
+[data-look=board] .card:nth-child(even),[data-look=board] .chip:nth-child(even){border-radius:15px 225px 15px 255px/255px 15px 225px 15px}
+[data-look=board] .card,[data-look=board] .list,[data-look=board] .tablebox{border-color:var(--fg)}
+[data-look=board] .tabs{border-top:0;border-bottom:2px dashed var(--line)}
+[data-look=board] .tab[aria-current=page]{color:var(--accent);border-bottom-color:transparent;text-decoration:underline wavy;text-underline-offset:6px}
+[data-look=board] .trow{font-size:22px;font-weight:400}[data-look=board] .trow:not(.lose) .score{color:var(--accent)}[data-look=board] .score{font-size:38px}
+[data-look=board] .meta{font-size:15px;font-weight:400;letter-spacing:.3px;text-transform:none}
+[data-look=board] .sheet{background:var(--bg);border:2px solid var(--fg)}[data-look=board] .field input,[data-look=board] .field select,[data-look=board] .in{background:#18221F}
+[data-look=board] .chip,[data-look=board] .btn,[data-look=board] .note,[data-look=board] .li .sub{font-size:16px}
+[data-look=board] .btn.pri,[data-look=board] .chip[aria-pressed=true]{color:#1F2B27}
+[data-look=board] .logo{background:#EEF0E8}
 </style>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="chalkfx" x="-5%" y="-10%" width="110%" height="120%"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" seed="4" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2" result="d"/><feColorMatrix in="n" type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 -1.5 1.75" result="s"/><feComposite in="d" in2="s" operator="in"/></filter></svg>
 <div id="app"></div>
@@ -187,12 +234,12 @@ function applyPatch(seed,p,live){
   S.teams.forEach(t=>{const e=(p.teams||{})[t.id];if(e)Object.assign(t,e);t.favBiz=(p.favBiz||{})[t.id]||[];
     Object.keys(p.rosters||{}).forEach(k=>{const[tid,sp,lv]=k.split('|');if(tid===t.id){t.rosters[sp]=t.rosters[sp]||{};t.rosters[sp][lv]=p.rosters[k]}})});
   S.flags=S.flags.filter(f=>!(p.flagsDone||[]).includes(f));
-  S.polls=p.polls||[];S.recaps=p.recaps||{};
+  S.polls=p.polls||[];S.recaps=p.recaps||{};S.look=p.look||'chalk';
   return S;
 }
 function derivePatch(S){
   const J=JSON.stringify,sg={},st={};SEED.games.forEach(g=>sg[g.id]=g);SEED.teams.forEach(t=>st[t.id]=t);
-  const p={scores:{},sponsors:{},rosters:{},teams:{},favBiz:{},businesses:S.businesses||[],flagsDone:SEED.flags.filter(f=>!S.flags.includes(f)),polls:S.polls||[],recaps:S.recaps||{}};
+  const p={scores:{},sponsors:{},rosters:{},teams:{},favBiz:{},businesses:S.businesses||[],flagsDone:SEED.flags.filter(f=>!S.flags.includes(f)),polls:S.polls||[],recaps:S.recaps||{},look:S.look||'chalk'};
   S.games.forEach(g=>{const o=sg[g.id];if(!o)return;if(g.hs!==o.hs||g.as!==o.as)p.scores[g.id]=[g.as??null,g.hs??null];if(g.sponsors.length)p.sponsors[g.id]={mode:g.sponsorMode,list:g.sponsors}});
   S.teams.forEach(t=>{const o=st[t.id];if(!o)return;if(t.favBiz.length)p.favBiz[t.id]=t.favBiz;
     if(t.name!==o.name||t.mascot!==o.mascot||J(t.links)!==J(o.links))p.teams[t.id]={name:t.name,mascot:t.mascot,links:t.links};
@@ -324,17 +371,20 @@ function SearchSheet({M,go,onClose,setLevel,setSport}){
     </div>`:null}<//>`;
 }
 
-function Home({M,favs,go,tab,setTab,openGame,openFavs,level,setLevel,setSport}){
+function Home({M,favs,go,tab,setTab,openGame,openFavs,level,setLevel,setSport,openSheet,ver}){
   const[wk,setWk]=useState(M.cur);const[cat,setCat]=useState('RUSH');
   const mine=useMemo(()=>{const out=[];favs.forEach(id=>{const gs=M.gamesOf(id);const last=[...gs].reverse().find(played);const next=gs.find(g=>!played(g)&&g.date>=todayISO());[last,next].forEach(g=>{if(g&&!out.includes(g))out.push(g)})});return out.sort((a,b)=>a.date<b.date?-1:1)},[M,favs]);
   const leaders=M.S.teams.flatMap(t=>((t.stats.football||{})[cat]||[]).map(x=>({...x,t}))).sort((a,b)=>b.v-a.v).slice(0,15);
-  const cinfo=CATS.find(c=>c[0]===cat);
+  const cinfo=CATS.find(c=>c[0]===cat),polls=COMMUNITY?(M.S.polls||[]):[],poll=polls.find(x=>x.open)||polls[0];
+  const TABS=[['teams','Teams'],['scores','Scores'],['standings','Standings'],['players','Players'],['playoffs','Playoffs']].concat(COMMUNITY?[['picks',"Pick'em"],['photos','Photos']]:[]);
   return html`
+  <${InstallBar} open=${()=>openSheet({k:'install'})}/>
   <section class="sec"><div class="between"><h2 class="eyebrow">My teams</h2><button class="link" onClick=${openFavs}>Edit</button></div>
     <div class="myteams">${favs.map(id=>M.T[id]&&html`<button class="mt" onClick=${()=>go({v:'team',id})}><${Logo} id=${id} size=${60}/><span>${M.T[id].name}</span></button>`)}
       <button class="mt" aria-label="Add a favorite team" onClick=${openFavs} style="color:var(--muted)"><span class="add-ring">${Ico.plus}</span><span>Add</span></button></div></section>
-  <nav class="tabs" aria-label="Sections">${[['teams','Teams'],['scores','Scores'],['standings','Standings'],['players','Players']].map(([k,l])=>html`<button class="tab" aria-current=${tab===k?'page':null} onClick=${()=>setTab(k)}>${l}</button>`)}</nav>
+  <nav class="tabs" aria-label="Sections">${TABS.map(([k,l])=>html`<button class="tab" aria-current=${tab===k?'page':null} onClick=${()=>setTab(k)}>${l}</button>`)}</nav>
   <section class="sec" aria-label="Sport and level"><${Sports} M=${M} setSport=${setSport}/><${Levels} level=${level} setLevel=${setLevel} M=${M}/></section>
+  ${tab==='scores'&&poll&&poll.open?html`<button class="banner between" style="width:100%;text-align:left;margin-bottom:14px;color:var(--fg)" onClick=${()=>setTab('players')}><span><b>Vote: ${poll.title}</b><br/>${poll.noms.length} nominees. One vote a day.</span><span class="btn sm pri">Vote</span></button>`:null}
   ${tab==='scores'?html`
     <section class="sec" style="padding-top:0"><h2 class="eyebrow">My teams' scores</h2>
       ${mine.length?html`<div class="grid">${mine.map(g=>html`<${GameCard} M=${M} g=${g} go=${go} open=${openGame}/>`)}</div>`:html`<div class="slot"><strong>No teams followed yet</strong><span>Follow a team and its latest score and next game show up here.</span><div><button class="btn pri" onClick=${openFavs}>Pick my teams</button></div></div>`}</section>
@@ -343,24 +393,29 @@ function Home({M,favs,go,tab,setTab,openGame,openFavs,level,setLevel,setSport}){
       <div class="grid">${M.weeks[wk].games.map(g=>html`<${GameCard} M=${M} g=${g} go=${go} open=${openGame}/>`)}</div></section>`:null}
   ${tab==='scores'&&fmtStamp(SEED.pulled)?html`<div class="note">Scores from MaxPreps, last updated ${fmtStamp(SEED.pulled)}.</div>`:null}
   ${tab==='teams'?Object.keys(M.confs).sort().map(c=>html`<section class="sec" style="padding-top:0"><h2 class="eyebrow">${c}</h2><div class="teamgrid">${M.confs[c].map(t=>{const r=M.rec(t.id);return html`<button class="tg" onClick=${()=>go({v:'team',id:t.id})}><${Logo} id=${t.id} size=${64}/><span>${t.name}</span><small>${r.all}</small></button>`})}</div></section>`):null}
-  ${tab==='standings'?html`<section class="sec" style="padding-top:0">${Object.keys(M.confs).sort().map(c=>html`<${Standings} M=${M} conf=${c} go=${go}/>`)}<div class="note">${M.soccer?'Calculated from the scores in the app and ranked by points: 3 for a win, 1 for a tie. Games after the regular season are not counted as conference games. Some conference opponents are not in the app yet.':level==='v'?'Calculated from the scores in the app. Twin Falls plays in the 5A Great Basin; its other conference opponents are not in the app yet.':'There are no official '+LV[level]+' standings. These records come from the scores posted so far, so they can lag behind.'}</div></section>`:null}
-  ${tab==='players'&&M.soccer?html`<section class="sec" style="padding-top:0"><div class="slot"><strong>No ${M.sp.name} stats yet</strong><span>Player stats for soccer have not been loaded.</span></div></section>`:null}
-  ${tab==='players'&&!M.soccer?html`<section class="sec" style="padding-top:0"><h2 class="eyebrow">Area leaders · Varsity football</h2>
+  ${tab==='standings'?html`<section class="sec" style="padding-top:0">${Object.keys(M.confs).sort().map(c=>html`<${Standings} M=${M} conf=${c} go=${go}/>`)}<div class="note">${M.soccer?'Calculated from the scores in the app and ranked by points: 3 for a win, 1 for a tie. Games after the regular season are not counted as conference games. Some conference opponents are not in the app yet.':!M.fb?'Calculated from the scores in the app, so they can lag behind until scores are posted.':level==='v'?'Calculated from the scores in the app. Twin Falls plays in the 5A Great Basin; its other conference opponents are not in the app yet.':'There are no official '+LV[level]+' standings. These records come from the scores posted so far, so they can lag behind.'}</div></section>`:null}
+  ${tab==='players'&&poll?html`<section class="sec" style="padding-top:0"><${Poll} key=${poll.id} M=${M} poll=${poll}/></section>`:null}
+  ${tab==='players'&&!M.fb?html`<section class="sec" style="padding-top:0"><div class="slot"><strong>No ${M.sp.name} stats yet</strong><span>Player stats for ${M.sp.name} have not been loaded.</span></div></section>`:null}
+  ${tab==='playoffs'?html`<section class="sec" style="padding-top:0"><${Playoffs} M=${M} go=${go} openGame=${openGame}/></section>`:null}
+  ${tab==='picks'?html`<section class="sec" style="padding-top:0"><${Pickem} key=${M.sport} S=${M.S} sport=${M.sport}/></section>`:null}
+  ${tab==='photos'?html`<section class="sec" style="padding-top:0"><${Photos} M=${M} favs=${favs} openSheet=${openSheet} ver=${ver}/></section>`:null}
+  ${tab==='players'&&M.fb?html`<section class="sec" style="padding-top:0"><h2 class="eyebrow">Area leaders · Varsity football</h2>
     <div class="chips scroll">${CATS.map(c=>html`<button class="chip" aria-pressed=${cat===c[0]} onClick=${()=>setCat(c[0])}>${c[1]}</button>`)}</div>
     <div class="list">${leaders.map((x,i)=>html`<button class="li" onClick=${()=>go({v:'team',id:x.t.id,tab:'stats'})}><span class="num" style="color:var(--muted);width:28px">${i+1}</span><${Logo} id=${x.t.id} size=${32}/><span class="grow"><b>${x.name}</b><div class="sub">${x.t.name}</div></span><span class="pill">${x.v}</span></button>`)}</div>
     <div class="note">${cinfo[1]}${cinfo[2]?', '+cinfo[2]:''}. From each team's MaxPreps stats page on ${fmtDay(SEED.statsDate||SEED.pulled)}. Rigby and Madison have not posted player stats.</div></section>`:null}`;
 }
 
-function TeamPage({M,id,tab,setTab,favs,toggle,go,openGame,openDonate,level,setLevel,setSport}){
+function TeamPage({M,id,tab,setTab,favs,toggle,go,openGame,openDonate,level,setLevel,setSport,openSheet,ver}){
   const t=M.T[id],r=M.rec(id),gs=M.gamesOf(id),fav=favs.includes(id);
   const biz=t.favBiz.map(b=>M.B[b]).filter(Boolean);
-  const fstats=t.stats.football||{},hasStats=!M.soccer&&level==='v'&&Object.keys(fstats).length>0,roster=((t.rosters[M.sport]||{})[level])||[];
+  useEffect(()=>{track('team',id)},[id]);if(tab==='sponsors')biz.forEach(b=>track('sponsorSeen',b.id,true));
+  const fstats=t.stats.football||{},hasStats=M.fb&&level==='v'&&Object.keys(fstats).length>0,roster=((t.rosters[M.sport]||{})[level])||[];
   return html`
   <button class="back" onClick=${()=>go({v:'home'})}>${Ico.back} All teams</button>
   <div class="hero"><${Logo} id=${id} size=${84}/><div><h1>${t.name} ${t.mascot}</h1><p>${M.sp.name}${level==='v'?'':' '+LV[level]} · ${r.all} overall · ${r.cf} ${t.conf}</p></div></div>
   <div class="row" style="flex-wrap:wrap;padding:10px 0 16px"><button class="btn pri" onClick=${()=>openDonate(t)}>${Ico.heart} Donate</button><button class="btn" aria-pressed=${fav} onClick=${()=>toggle(id)}>${fav?'Following':'Follow'}</button></div>
   <div style="padding-bottom:14px;display:flex;flex-direction:column;gap:8px"><${Sports} M=${M} setSport=${setSport}/><${Levels} level=${level} setLevel=${setLevel} M=${M}/></div>
-  <nav class="tabs" aria-label="Team sections">${[['schedule','Schedule'],['standings','Standings'],['stats','Stats'],['roster','Roster'],['sponsors','Sponsors']].map(([k,l])=>html`<button class="tab" aria-current=${tab===k?'page':null} onClick=${()=>setTab(k)}>${l}</button>`)}</nav>
+  <nav class="tabs" aria-label="Team sections">${[['schedule','Schedule'],['standings','Standings'],['stats','Stats'],['roster','Roster']].concat(COMMUNITY?[['photos','Photos']]:[],[['sponsors','Sponsors']]).map(([k,l])=>html`<button class="tab" aria-current=${tab===k?'page':null} onClick=${()=>setTab(k)}>${l}</button>`)}</nav>
   <section class="sec">
   ${tab==='schedule'?html`<div class="list">${gs.map(g=>{const home=g.home===id,opp=M.sideOf(g,home?'away':'home'),mine=home?g.hs:g.as,th=home?g.as:g.hs,pl=played(g),sp=sponsorLine(M,g);
     return html`<button class="li" onClick=${()=>openGame(g)}><span style="width:64px;flex:none;font-size:12px;font-weight:600;letter-spacing:.8px;color:var(--muted)">${dshort(g.date)}</span><${Logo} id=${opp.id} name=${opp.name}/><span class="grow"><b>${g.siteUnknown?'vs':home?'vs':'at'} ${opp.name}</b><div class="sub">${M.isConf(g)?'Conference':g.post?'':'Non-conference'}${sp?html` · ${sp}`:''}</div></span>
@@ -368,11 +423,12 @@ function TeamPage({M,id,tab,setTab,favs,toggle,go,openGame,openDonate,level,setL
     ${gs.length?null:html`<div class="slot"><strong>No games listed</strong><span>${t.name} has not posted a ${M.sp.name} ${LV[level]} schedule.</span></div>`}<a class="note" href=${mpLink(t,'schedule',level,M.sport)} target="_blank" rel="noopener">Schedule on MaxPreps</a>`:null}
   ${tab==='standings'?html`<${Standings} M=${M} conf=${t.conf} me=${id} go=${go}/><div class="note">PF and PA are points for and against in all games.</div>`:null}
   ${tab==='stats'?(hasStats?html`<div class="grid">${CATS.filter(c=>fstats[c[0]]).map(c=>html`<div class="card"><div class="meta"><span>${c[1]}</span><span>${c[2]}</span></div>${fstats[c[0]].map(x=>html`<div class="trow"><span class="nm">${x.name}</span><span class="score" style="font-size:22px">${x.v}</span></div>`)}</div>`)}</div><a class="note" href=${mpLink(t,'stats')} target="_blank" rel="noopener">Full stats on MaxPreps</a>`
-    :html`<div class="slot"><strong>No stats posted yet</strong><span>${M.soccer?'Player stats for soccer have not been loaded.':level==='v'?t.name+' has not posted player stats on MaxPreps this season.':'Player stats are varsity only.'}</span></div>`):null}
-  ${tab==='roster'?(roster.length?html`<div class="note">${roster.length} players</div><div class="list">${roster.map(p=>html`<div class="li"><span class="num">${p.n||'–'}</span><span class="grow"><b>${p.name}</b>${p.pos?html`<div class="sub">${p.pos}</div>`:null}</span><span class="tag">${p.gr||'—'}</span></div>`)}</div><a class="note" href=${mpLink(t,'roster',level,M.sport)} target="_blank" rel="noopener">Roster on MaxPreps</a>`
+    :html`<div class="slot"><strong>No stats posted yet</strong><span>${!M.fb?'Player stats for '+M.sp.name+' have not been loaded.':level==='v'?t.name+' has not posted player stats on MaxPreps this season.':'Player stats are varsity only.'}</span></div>`):null}
+  ${tab==='roster'?(roster.length?html`<div class="note">${roster.length} players${level==='v'&&(t.rosterNote||{})[M.sport]?' · this is the '+t.rosterNote[M.sport]+' roster. This season\'s has not been posted yet.':''}</div><div class="list">${roster.map(p=>html`<div class="li"><span class="num">${p.n||'–'}</span><span class="grow"><b>${p.name}</b>${p.pos?html`<div class="sub">${p.pos}</div>`:null}</span><span class="tag">${p.gr||'—'}</span></div>`)}</div><a class="note" href=${mpLink(t,'roster',level,M.sport)} target="_blank" rel="noopener">Roster on MaxPreps</a>`
     :html`<div class="slot"><strong>No roster posted yet</strong><span>There is no ${M.sp.name} ${LV[level]} roster for ${t.name} yet. One can be pasted in from the admin screen.</span></div>`):null}
+  ${tab==='photos'?html`<${Photos} M=${M} team=${id} favs=${favs} openSheet=${openSheet} ver=${ver}/>`:null}
   ${tab==='sponsors'?html`<h2 class="eyebrow">${t.name}'s favorite businesses</h2>
-    ${biz.length?html`<div class="grid">${biz.map(b=>html`<div class="card"><div class="trow"><${Logo} name=${b.name} size=${40}/><span class="nm">${b.name}</span></div>${b.tag?html`<div class="note">${b.tag}</div>`:null}${b.url?html`<a href=${b.url} target="_blank" rel="noopener">Visit website</a>`:null}</div>`)}</div>`
+    ${biz.length?html`<div class="grid">${biz.map(b=>html`<div class="card"><div class="trow"><${Logo} name=${b.name} size=${40}/><span class="nm">${b.name}</span></div>${b.tag?html`<div class="note">${b.tag}</div>`:null}${b.url?html`<a href=${b.url} target="_blank" rel="noopener" onClick=${()=>track('sponsorTap',b.id)}>Visit website</a>`:null}</div>`)}</div>`
     :html`<div class="slot"><strong>Your business here</strong><span>Local businesses that back ${t.name} are listed here for every fan who opens this page.</span></div>`}`:null}
   </section>`;
 }
@@ -426,7 +482,7 @@ async function scoreCard(M,g){
   for(let i=0;i<2;i++){const s=rows[i],o=rows[1-i],y=430+i*250,lose=s.score<o.score;
     x.beginPath();x.arc(170,y,92,0,7);x.fillStyle=s.id&&LOGO[s.id]?'#fff':'#2A313C';x.fill();
     const im=s.id&&LOGO[s.id]?await loadImg(LOGO[s.id]):null;
-    if(im){const k=Math.min(148/im.width,148/im.height);x.drawImage(im,170-im.width*k/2,y-im.height*k/2,im.width*k,im.height*k)}
+    if(im){const k=Math.min(124/im.width,124/im.height);x.save();x.beginPath();x.arc(170,y,90,0,7);x.clip();x.drawImage(im,170-im.width*k/2,y-im.height*k/2,im.width*k,im.height*k);x.restore()}
     else{x.fillStyle='#A9B1BD';x.font='700 64px '+disp;x.textAlign='center';x.fillText(s.name.replace(/[^A-Za-z ]/g,'').split(' ').map(v=>v[0]).join('').slice(0,2).toUpperCase(),170,y)}
     x.textAlign='left';x.fillStyle=lose?'#A9B1BD':'#F2F4F7';let fs=70;do{x.font=(lose?'500 ':'600 ')+fs+'px '+body;fs-=4}while(x.measureText(s.name).width>500&&fs>30);
     x.fillText(s.name,300,s.id?y-18:y);
@@ -507,14 +563,14 @@ function ReportSheet({M,g,onClose}){
     :html`<h3 class="eyebrow">Be a trusted source</h3><div class="note">Trusted sources post scores straight to the app, live from the game. Tell us who you are and 208 Pressbox will get back to you.</div>
       <div class="formrow"><label class="field">Phone or email<input id="ap-contact" value=${ap.contact} onInput=${e=>setAp({...ap,contact:e.target.value})}/></label>
         <label class="field">Team you follow<select id="ap-team" value=${ap.team} onChange=${e=>setAp({...ap,team:e.target.value})}>${M.S.teams.map(t=>html`<option value=${t.id}>${t.name}</option>`)}</select></label>
-        <label class="field">You are a<select id="ap-role" value=${ap.role} onChange=${e=>setAp({...ap,role:e.target.value})}>${ROLES.map(r=>html`<option>${r}</option>`)}</select></label></div>
+        <label class="field">You are a<select id="ap-role" value=${ap.role} onChange=${e=>setAp({...ap,role:e.target.value})}>${ROLES.map(r=>html`<option value=${r}>${r}</option>`)}</select></label></div>
       <label class="field">Anything else (optional)<input id="ap-note" value=${ap.note} onInput=${e=>setAp({...ap,note:e.target.value})} placeholder="Which games you are usually at"/></label>
       <div class="row"><button class="btn pri" disabled=${!ap.contact.trim()||busy} onClick=${apply}>Apply</button><span class="note">Only the 208 Pressbox admin sees your contact info.</span></div>`}
     <div><button class="btn" onClick=${onClose}>Done</button></div><//>`;
   return html`<${Sheet} title="Report score" onClose=${onClose}>
     <div class="list"><div class="li"><${Logo} id=${a.id} name=${a.name} size=${40}/><span class="grow"><b>${a.name}</b></span>${num('as')}</div>
       <div class="li"><${Logo} id=${h.id} name=${h.name} size=${40}/><span class="grow"><b>${h.name}</b></span>${num('hs')}</div></div>
-    <div class="formrow"><label class="field">Where the game stands<select id="rp-st" value=${f.st} onChange=${e=>setF({...f,st:e.target.value})}>${PERIODS(M.sport).map(p=>html`<option>${p}</option>`)}</select></label>
+    <div class="formrow"><label class="field">Where the game stands<select id="rp-st" value=${f.st} onChange=${e=>setF({...f,st:e.target.value})}>${PERIODS(M.sport).map(p=>html`<option value=${p}>${p}</option>`)}</select></label>
       <label class="field">Your name<input id="rp-name" value=${f.name} onInput=${e=>setF({...f,name:e.target.value})}/></label></div>
     <div class="row"><button class="btn pri" disabled=${!good||busy} onClick=${send}>${busy?'Sending…':'Send score'}</button></div>
     <div class="note">Report only what is on the scoreboard. Scores from trusted sources show right away; everyone else's are checked first.</div><//>`;
@@ -577,7 +633,7 @@ function Poll({M,poll}){
       return html`<div class="li" style="flex-wrap:wrap"><${Logo} id=${n.team} name=${n.name} size=${40}/><span class="grow"><b>${n.name}</b>${win?html` <span class="tag" style="color:var(--accent);border-color:var(--accent)">Winner</span>`:null}<div class="sub">${(M.T[n.team]||{}).name||''}${n.line?' · '+n.line:''}</div></span>
         ${show?html`<span class="pill">${pct}%</span>`:poll.open&&voted===''?html`<button class="btn sm pri" onClick=${()=>vote(n)}>Vote</button>`:null}
         ${show?html`<div class="bar"><i style=${'width:'+pct+'%'+(voted===n.id||win?'':';background:var(--dash)')}></i></div>`:null}</div>`})}</div>
-    <div class="note">${!poll.open?'Voting is closed. '+tot+' votes.':voted?'Your vote is in for today. Come back tomorrow to vote again. '+tot+' votes so far.':'One vote per day until voting closes.'}</div>`;
+    <div class="note">${!poll.open?'Voting is closed. '+tot+(tot===1?' vote.':' votes.'):voted?'Your vote is in for today. Come back tomorrow to vote again. '+tot+(tot===1?' vote':' votes')+' so far.':'One vote per day until voting closes.'}</div>`;
 }
 
 /* ---------- Photos ---------- */
@@ -637,19 +693,88 @@ function Playoffs({M,go,openGame}){
 }
 
 /* ---------- Admin ---------- */
-function Admin({M,update,reset,go,level,setLevel,setSport}){
-  const[tab,setTab]=useState('scores');const S=M.S;
-  return html`<button class="back" onClick=${()=>go({v:'home'})}>${Ico.back} Back to app</button>
+const LOOKS=[['chalk',"Today's look"],['board',"Coach's chalkboard"],['score','Scoreboard']];
+function Admin({M,update,reset,go,level,setLevel,setSport,me,setMe,openSheet,ver,bump}){
+  const[tab,setTab]=useState('scores');const S=M.S;const[busy,setBusy]=useState(false);
+  const sign=async()=>{setBusy(true);try{await DB.signIn();setMe({...DB.me});if(!DB.me.admin)SAY('That account is not the 208 Pressbox admin.')}catch(e){console.warn(e);SAY('Sign-in did not finish. Try again.')}setBusy(false)};
+  const back=html`<button class="back" onClick=${()=>go({v:'home'})}>${Ico.back} Back to app</button>`;
+  if(DB.kind==='fire'&&!me.admin)return html`${back}<div class="hero"><div><h1>Admin</h1><p>Sign in with the owner's Google account to make changes.</p></div></div>
+    <div class="row" style="flex-wrap:wrap"><button class="btn pri" disabled=${busy} onClick=${sign}>Sign in with Google</button>${me.email?html`<span class="note">Signed in as ${me.email}, which is not the admin.</span>`:null}</div>`;
+  return html`${back}
   <div class="hero" style="padding-bottom:12px"><div><h1>Admin</h1><p>Small changes without uploading files.</p></div></div>
-  <div class="banner">Preview: changes here save in this browser only, and there is no login yet. Both come with the database step. <button class="link" style="min-height:0" onClick=${reset}>Reset preview data</button></div>
-  <nav class="tabs" style="margin-top:14px" aria-label="Admin sections">${[['scores','Scores'],['sponsors','Sponsors'],['rosters','Rosters'],['teams','Teams'],['review','Needs a look ('+S.flags.length+')']].map(([k,l])=>html`<button class="tab" aria-current=${tab===k?'page':null} onClick=${()=>setTab(k)}>${l}</button>`)}</nav>
+  <div class="banner">${DB.kind==='fire'?html`Signed in as ${me.email}. Changes save for everyone right away. <button class="link" style="min-height:0" onClick=${async()=>{await DB.signOut();setMe({...DB.me})}}>Sign out</button>`
+    :html`The shared database is not connected yet, so changes here save in this browser only. <button class="link" style="min-height:0" onClick=${reset}>Reset my changes</button>`}</div>
+  <div class="row" style="flex-wrap:wrap;margin-top:12px"><span class="note">App look</span><div class="chips">${LOOKS.map(([k,l])=>html`<button class="chip" aria-pressed=${(S.look||'chalk')===k} onClick=${()=>update(s=>{s.look=k})}>${l}</button>`)}</div></div>
+  <nav class="tabs" style="margin-top:14px" aria-label="Admin sections">${[['scores','Scores']].concat(COMMUNITY?[['inbox','Inbox'],['fans','Fans'],['reach','Reach']]:[],[['sponsors','Sponsors'],['rosters','Rosters'],['teams','Teams'],['review','Needs a look ('+S.flags.length+')']]).map(([k,l])=>html`<button class="tab" aria-current=${tab===k?'page':null} onClick=${()=>setTab(k)}>${l}</button>`)}</nav>
   <section class="sec">
     ${tab==='scores'?html`<${Sports} M=${M} setSport=${setSport}/><${Levels} level=${level} setLevel=${setLevel} M=${M}/><${AdmScores} M=${M} update=${update}/>`:null}
+    ${tab==='inbox'?html`<${AdmInbox} M=${M} update=${update} openSheet=${openSheet} ver=${ver} bump=${bump}/>`:null}
+    ${tab==='fans'?html`<${Sports} M=${M} setSport=${setSport}/><${AdmFans} M=${M} update=${update}/>`:null}
+    ${tab==='reach'?html`<${AdmReach} M=${M}/>`:null}
     ${tab==='sponsors'?html`<${AdmSponsors} M=${M} update=${update}/>`:null}
     ${tab==='rosters'?html`<${AdmRoster} M=${M} update=${update}/>`:null}
     ${tab==='teams'?html`<${AdmTeams} M=${M} update=${update}/>`:null}
     ${tab==='review'?html`<div class="list">${S.flags.map((f,i)=>html`<div class="li"><span class="grow">${f}</span><button class="btn sm" onClick=${()=>update(s=>{s.flags.splice(i,1)})}>Done</button></div>`)}${S.flags.length?null:html`<div class="li">Nothing needs a look.</div>`}</div>`:null}
   </section>`;
+}
+function AdmInbox({M,update,openSheet,ver,bump}){
+  const[d,reload]=useLoad(()=>Promise.all([DB.list('reports',[['status','==','new']]),DB.list('applications',[['status','==','new']]),DB.list('photos',[['status','==','pending']]),DB.list('flags'),DB.list('trusted')]),[ver]);
+  const run=async(fn,msg)=>{try{await fn();if(msg)SAY(msg)}catch(e){console.warn(e);SAY('That did not save. Try again.')}reload()};
+  if(d===null)return html`<div class="note">Loading…</div>`;if(!d)return html`<div class="note">Could not load the inbox. Check your connection.</div>`;
+  const[reps,apps,pend,flags,trusted]=d;
+  const accept=r=>run(async()=>{if(/^Final/.test(r.st))update(s=>{const g=s.games.find(x=>x.id===r.game);if(g){g.as=r.as;g.hs=r.hs}});else await DB.set('state','live',{[r.game]:{as:r.as,hs:r.hs,st:r.st,by:r.name,at:Date.now()}},true);await DB.set('reports',r.id,{status:'ok'},true)},'Score posted.');
+  const none=t=>html`<div class="li"><span class="sub">${t}</span></div>`;
+  return html`<h2 class="eyebrow">Reported scores</h2>
+  <div class="list">${reps.map(r=>html`<div class="li" style="flex-wrap:wrap"><span class="grow"><b>${r.label}</b><div class="sub">${r.sport} · away ${r.as}, home ${r.hs} · ${r.st} · from ${r.name}${r.at?' at '+clockOf(r.at):''}</div></span><button class="btn sm pri" onClick=${()=>accept(r)}>Post it</button><button class="btn sm" onClick=${()=>run(()=>DB.set('reports',r.id,{status:'no'},true))}>Dismiss</button></div>`)}${reps.length?null:none('No scores waiting.')}</div>
+  <h2 class="eyebrow" style="margin-top:12px">Trusted source applications</h2>
+  <div class="list">${apps.map(a=>html`<div class="li" style="flex-wrap:wrap"><span class="grow"><b>${a.name}</b> · ${a.role}<div class="sub">${(M.T[a.team]||{}).name||''} · ${a.contact}${a.note?' · '+a.note:''}</div></span><button class="btn sm pri" onClick=${()=>run(async()=>{await DB.set('trusted',a.uid,{name:a.name,team:a.team,contact:a.contact,role:a.role,at:Date.now()});await DB.set('applications',a.id,{status:'ok'},true)},a.name+' is now a trusted source.')}>Approve</button><button class="btn sm" onClick=${()=>run(()=>DB.set('applications',a.id,{status:'no'},true))}>Decline</button></div>`)}${apps.length?null:none('No applications waiting.')}</div>
+  <h2 class="eyebrow" style="margin-top:12px">Photos waiting for approval</h2>
+  ${pend.length?html`<div class="pgrid">${pend.map(x=>html`<button class="ph" aria-label="Review photo" onClick=${()=>openSheet({k:'photo',p:x})}><img src=${x.thumb} alt=""/></button>`)}</div>`:html`<div class="list">${none('No photos waiting.')}</div>`}
+  ${flags.length?html`<h2 class="eyebrow" style="margin-top:12px">Photos someone asked to take down</h2><div class="list">${flags.map(f=>html`<div class="li"><span class="grow">${(M.T[f.team]||{}).name||'Photo'}</span><button class="btn sm" onClick=${async()=>{const x=await DB.get('photos',f.photo).catch(()=>null);if(x)openSheet({k:'photo',p:x});else SAY('That photo is already gone.')}}>View</button><button class="btn sm" onClick=${()=>run(()=>DB.del('flags',f.id))}>Clear</button></div>`)}</div>`:null}
+  <h2 class="eyebrow" style="margin-top:12px">Trusted sources</h2>
+  <div class="list">${trusted.map(t=>html`<div class="li"><span class="grow"><b>${t.name}</b><div class="sub">${(M.T[t.team]||{}).name||''}${t.role?' · '+t.role:''}${t.contact?' · '+t.contact:''}</div></span><button class="btn sm" onClick=${()=>run(()=>DB.del('trusted',t.id),'Removed.')}>Remove</button></div>`)}${trusted.length?null:none('Nobody yet. Approve an application and their scores post instantly.')}</div>`;
+}
+function AdmFans({M,update}){
+  const S=M.S,Mv=useMemo(()=>model(S,M.sport,'v'),[S,M.sport]);const[wk,setWk]=useState(Mv.cur);const[busy,setBusy]=useState(false);
+  const[pf,setPf]=useState({title:'Player of the Week',noms:[]});const[nf,setNf]=useState({name:'',team:S.teams[0].id,line:''});
+  const done=Mv.G.filter(played).slice(-30).reverse();const[rg,setRg]=useState('');const[rt,setRt]=useState('');
+  const w=Mv.weeks[Math.min(wk,Mv.weeks.length-1)];
+  const score=async()=>{if(!w)return;setBusy(true);try{const r=await scoreWeek(S,M.sport,w);SAY(r.players?'Leaderboard updated: '+r.players+' fans'+(r.final?', winner announced.':'.'):'Nobody has made picks for that week yet.')}catch(e){console.warn(e);SAY('Could not update the leaderboard.')}setBusy(false)};
+  const close=async p=>{setBusy(true);try{const c={};await Promise.all(p.noms.map(async n=>{c[n.id]=await DB.count('votes',[['poll','==',p.id],['nom','==',n.id]])}));update(s=>{const x=s.polls.find(y=>y.id===p.id);x.open=false;x.result=c});SAY('Voting closed.')}catch(e){console.warn(e);SAY('Could not close voting.')}setBusy(false)};
+  const pickGame=id=>{setRg(id);const g=Mv.G.find(x=>x.id===id);const r=g&&recap(Mv,g);setRt(r?r.text:'')};
+  return html`<h2 class="eyebrow">Pick'em · ${Mv.sp.name}</h2>
+  ${w?html`<div class="chips scroll">${Mv.weeks.map((x,i)=>html`<button class="chip" aria-pressed=${w===x} onClick=${()=>setWk(i)}>${x.label}</button>`)}</div>
+  <div class="row" style="flex-wrap:wrap"><button class="btn pri" disabled=${busy} onClick=${score}>Update ${w.label.split(' · ')[0]} leaderboard</button><span class="note">${w.games.filter(played).length} of ${w.games.length} games final. When all are final the winner is announced on the Pick'em tab.</span></div>`:html`<div class="note">No schedule for this sport yet.</div>`}
+  <h2 class="eyebrow" style="margin-top:12px">Player of the week</h2>
+  <label class="field">Title<input id="pl-title" value=${pf.title} onInput=${e=>setPf({...pf,title:e.target.value})}/></label>
+  <div class="formrow"><label class="field">Player<input id="pl-name" value=${nf.name} onInput=${e=>setNf({...nf,name:e.target.value})}/></label><label class="field">Team<select id="pl-team" value=${nf.team} onChange=${e=>setNf({...nf,team:e.target.value})}>${S.teams.map(t=>html`<option value=${t.id}>${t.name}</option>`)}</select></label><label class="field">What they did<input id="pl-line" value=${nf.line} onInput=${e=>setNf({...nf,line:e.target.value})} placeholder="3 TDs, 142 yards rushing"/></label>
+    <button class="btn" disabled=${!nf.name.trim()} onClick=${()=>{setPf({...pf,noms:pf.noms.concat({id:'n'+Date.now().toString(36),name:nf.name.trim(),team:nf.team,line:nf.line.trim()})});setNf({...nf,name:'',line:''})}}>Add nominee</button></div>
+  ${pf.noms.length?html`<div class="list">${pf.noms.map(n=>html`<div class="li"><span class="grow"><b>${n.name}</b><div class="sub">${M.T[n.team].name}${n.line?' · '+n.line:''}</div></span><button class="btn sm" onClick=${()=>setPf({...pf,noms:pf.noms.filter(x=>x!==n)})}>Remove</button></div>`)}</div>`:null}
+  <div><button class="btn pri" disabled=${pf.noms.length<2||!pf.title.trim()} onClick=${()=>{update(s=>{s.polls=[{id:'p'+Date.now().toString(36),title:pf.title.trim(),noms:pf.noms,open:true}].concat(s.polls||[])});setPf({title:'Player of the Week',noms:[]});SAY('Voting is open.')}}>Open voting</button></div>
+  ${(S.polls||[]).length?html`<div class="list">${S.polls.map(p=>html`<div class="li"><span class="grow"><b>${p.title}</b><div class="sub">${p.noms.length} nominees · ${p.open?'voting open':'closed'}</div></span>${p.open?html`<button class="btn sm" disabled=${busy} onClick=${()=>close(p)}>Close voting</button>`:null}<button class="btn sm" onClick=${()=>update(s=>{s.polls=s.polls.filter(x=>x.id!==p.id)})}>Delete</button></div>`)}</div>`:null}
+  <h2 class="eyebrow" style="margin-top:12px">Game recaps</h2>
+  <label class="field">Game<select id="rc-game" value=${rg} onChange=${e=>pickGame(e.target.value)}><option value="">Choose a finished game</option>${done.map(g=>html`<option value=${g.id}>${dshort(g.date)} · ${Mv.sideOf(g,'away').name} at ${Mv.sideOf(g,'home').name}</option>`)}</select></label>
+  ${rg?html`<label class="field">Recap<textarea id="rc-text" style="font-family:inherit;font-size:15px;min-height:120px" value=${rt} onInput=${e=>setRt(e.target.value)}></textarea></label>
+  <div class="row" style="flex-wrap:wrap"><button class="btn pri" onClick=${()=>{update(s=>{s.recaps[rg]=rt.trim()});SAY('Recap saved.')}}>Save my recap</button>${S.recaps[rg]?html`<button class="btn" onClick=${()=>{update(s=>{delete s.recaps[rg]});SAY('Back to the automatic recap.');setRg('')}}>Use the automatic one</button>`:null}</div>`
+  :html`<div class="note">Every finished game already has a short recap written from the score. Pick a game to write your own.</div>`}`;
+}
+function AdmReach({M}){
+  const days=useMemo(()=>{const o=[];for(let i=0;i<14;i++){const d=new Date();d.setDate(d.getDate()-i);o.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'))}return o},[]);
+  const[d]=useLoad(()=>Promise.all(days.map(x=>Promise.all([DB.count('visits',[['day','==',x]]),DB.count('visits',[['day','==',x],['home','==',true]]),DB.get('stats',x)]))),[]);
+  if(d===null)return html`<div class="note">Counting…</div>`;if(!d)return html`<div class="note">Could not load the numbers. Check your connection.</div>`;
+  const sum=k=>{const o={};d.forEach(r=>Object.entries((r[2]||{})[k]||{}).forEach(([id,n])=>o[id]=(o[id]||0)+n));return o};
+  const team=sum('team'),seen=sum('sponsorSeen'),tap=sum('sponsorTap'),wk=d.slice(0,7).reduce((a,r)=>a+r[0],0),tot=d.reduce((a,r)=>a+r[0],0),home=d.slice(0,7).reduce((a,r)=>a+r[1],0);
+  const tv=Object.entries(team).sort((a,b)=>b[1]-a[1]),bz=M.S.businesses.filter(b=>seen[b.id]||tap[b.id]);
+  return html`<div class="grid"><div class="card"><div class="meta"><span>Visits, last 7 days</span></div><div class="big">${wk}</div><div class="note">One per person per day.</div></div>
+    <div class="card"><div class="meta"><span>Visits, last 14 days</span></div><div class="big">${tot}</div></div>
+    <div class="card"><div class="meta"><span>From the home screen, last 7 days</span></div><div class="big">${home}</div><div class="note">Visits from people who added the app.</div></div></div>
+  <h2 class="eyebrow" style="margin-top:12px">By day</h2>
+  <div class="tablebox"><table><thead><tr><th>Day</th><th>People</th><th>Home screen</th></tr></thead><tbody>${days.map((x,i)=>html`<tr><td>${dshort(x)}</td><td>${d[i][0]}</td><td>${d[i][1]}</td></tr>`)}</tbody></table></div>
+  <h2 class="eyebrow" style="margin-top:12px">Team page visits, 14 days</h2>
+  ${tv.length?html`<div class="tablebox"><table><thead><tr><th>Team</th><th>Visits</th></tr></thead><tbody>${tv.map(([id,n])=>html`<tr><td>${(M.T[id]||{}).name||id}</td><td>${n}</td></tr>`)}</tbody></table></div>`:html`<div class="note">No team page visits counted yet.</div>`}
+  <h2 class="eyebrow" style="margin-top:12px">Sponsors, 14 days</h2>
+  ${bz.length?html`<div class="tablebox"><table><thead><tr><th>Business</th><th>People who saw it</th><th>Taps to website</th></tr></thead><tbody>${bz.map(b=>html`<tr><td>${b.name}</td><td>${seen[b.id]||0}</td><td>${tap[b.id]||0}</td></tr>`)}</tbody></table></div>`:html`<div class="note">No sponsor views counted yet. Add a business under Sponsors and its numbers show here.</div>`}
+  <div class="note">Your own visits while signed in as admin are not counted.</div>`;
 }
 function AdmScores({M,update}){
   const[wk,setWk]=useState(M.cur);
@@ -703,27 +828,54 @@ function AdmTeams({M,update}){
     <div class="row" style="flex-wrap:wrap;font-size:13px">${['schedule','roster','stats','standings'].map(p=>html`<a href=${mpLink(t,p)} target="_blank" rel="noopener">${p}</a>`)}</div></div>`)}`;
 }
 
+function migrateOld(){ // carry over edits made before the shared database existed
+  try{const ks=Object.keys(localStorage).filter(k=>k.indexOf('pb_preview3_')===0).sort();if(!ks.length)return{};
+    const o=JSON.parse(localStorage.getItem(ks[ks.length-1])),sg={},st={},J=JSON.stringify,p={scores:{},sponsors:{},favBiz:{},rosters:{},businesses:o.businesses||[]};
+    SEED.games.forEach(g=>sg[g.id]=g);SEED.teams.forEach(t=>st[t.id]=t);
+    (o.games||[]).forEach(g=>{const x=sg[g.id];if(!x)return;if(x.hs==null&&g.hs!=null&&g.as!=null)p.scores[g.id]=[g.as,g.hs];if((g.sponsors||[]).length)p.sponsors[g.id]={mode:g.sponsorMode,list:g.sponsors}});
+    (o.teams||[]).forEach(t=>{const x=st[t.id];if(!x)return;if((t.favBiz||[]).length)p.favBiz[t.id]=t.favBiz;
+      Object.keys(t.rosters||{}).forEach(sp=>Object.keys(t.rosters[sp]).forEach(lv=>{const r=t.rosters[sp][lv];if(r&&r.length&&J(r)!==J((x.rosters[sp]||{})[lv]||[]))p.rosters[t.id+'|'+sp+'|'+lv]=r}))});
+    return p}catch(e){return{}}
+}
 function App(){
-  const[S,setS]=useState(loadState);const[favs,setFavs]=useState(loadFavs);
-  const[view,setView]=useState({v:'home'});const[homeTab,setHomeTab]=useState('scores');
+  const[patch,setPatchRaw]=useState(()=>ls.json('pb_patch')||migrateOld());const[live,setLive]=useState(null);
+  const[me,setMe]=useState({...DB.me});const[ver,setVer]=useState(0);const[toast,setToast]=useState('');const[favs,setFavs]=useState(loadFavs);
+  const[view,setView]=useState({v:'home'});const[homeTab,setHomeTab]=useState(()=>({'#vote':'players','#picks':'picks','#photos':'photos','#playoffs':'playoffs'})[location.hash]||'scores');
   const[sheet,setSheet]=useState(null);const[level,setLevel]=useState('v');const[sport,setSportRaw]=useState('football');
+  const pref=useRef(patch),saveT=useRef(null),toastT=useRef(null);
+  const setPatch=p=>{pref.current=p;setPatchRaw(p);ls.set('pb_patch',JSON.stringify(p))};
+  const S=useMemo(()=>applyPatch(SEED,patch,live),[patch,live]);
+  useEffect(()=>{SAY=m=>{setToast(m);clearTimeout(toastT.current);toastT.current=setTimeout(()=>setToast(''),4200)};const off=[];
+    dbReady.then(()=>{setMe({...DB.me});off.push(DB.watch('state','admin',d=>{if(d&&!saveT.current)setPatch(d)}));off.push(DB.watch('state','live',d=>setLive(d||{})))});countVisit();
+    const h=()=>{if(document.visibilityState!=='hidden')return;flushTrack();if(saveT.current){clearTimeout(saveT.current);saveT.current=null;DB.set('state','admin',pref.current).catch(()=>{})}};document.addEventListener('visibilitychange',h);
+    return()=>{off.forEach(f=>f&&f());document.removeEventListener('visibilitychange',h)}},[]);
+  useEffect(()=>{document.documentElement.setAttribute('data-look',S.look||'chalk')},[S.look]);
   const setSport=id=>{setSportRaw(id);const sp=S.sports.find(x=>x.id===id);if(sp&&!(sp.levels||['v']).includes(level))setLevel('v')};
   const M=useMemo(()=>model(S,sport,level),[S,sport,level]);
-  const update=fn=>setS(prev=>{const n=clone(prev);fn(n);saveState(n);return n});
-  const reset=()=>{try{localStorage.removeItem(KEY)}catch(e){}setS(clone(SEED))};
-  const toggle=id=>setFavs(f=>{const n=f.includes(id)?f.filter(x=>x!==id):f.concat(id);try{localStorage.setItem(FAVKEY,JSON.stringify(n))}catch(e){}return n});
+  const update=fn=>{const n=applyPatch(SEED,pref.current,null);fn(n);const p=derivePatch(n);setPatch(p);
+    clearTimeout(saveT.current);saveT.current=setTimeout(()=>{saveT.current=null;dbReady.then(()=>DB.set('state','admin',pref.current)).catch(e=>{console.warn(e);SAY('That change did not save for everyone. Check your connection.')})},700)};
+  const reset=()=>{setPatch({});dbReady.then(()=>DB.set('state','admin',{})).catch(()=>{})};
+  const toggle=id=>setFavs(f=>{const n=f.includes(id)?f.filter(x=>x!==id):f.concat(id);ls.set(FAVKEY,JSON.stringify(n));return n});
   const go=v=>{setView(v);try{window.scrollTo(0,0)}catch(e){}};
-  const openGame=g=>setSheet({k:'game',id:g.id});
+  const openGame=g=>setSheet({k:'game',id:g.id}),close=()=>setSheet(null),bump=()=>setVer(v=>v+1);
+  const sg=sheet&&sheet.id?S.games.find(g=>g.id===sheet.id):null,MG=sg?(sg.sport===sport&&(sg.level||'v')===level?M:model(S,sg.sport||'football',sg.level||'v')):M;
   return html`<div class="wrap">
     <header class="hdr"><button class="brand" onClick=${()=>go({v:'home'})} aria-label="208 Pressbox home"><img src=${BRAND.icon} alt=""/><b>208</b><span>PRESSBOX</span></button>
       <div class="hdr-btns"><button class="icon" aria-label="Search" onClick=${()=>setSheet({k:'search'})}>${Ico.search}</button>${SHOW_ADMIN?html`<button class="icon" aria-label="Admin" onClick=${()=>go({v:'admin'})}>${Ico.gear}</button>`:null}</div></header>
-    ${view.v==='home'?html`<${Home} M=${M} favs=${favs} go=${go} tab=${homeTab} setTab=${setHomeTab} openGame=${openGame} openFavs=${()=>setSheet({k:'favs'})} level=${level} setLevel=${setLevel} setSport=${setSport}/>`:null}
-    ${view.v==='team'&&M.T[view.id]?html`<${TeamPage} M=${M} id=${view.id} tab=${view.tab||'schedule'} setTab=${t=>setView({...view,tab:t})} favs=${favs} toggle=${toggle} go=${go} openGame=${openGame} openDonate=${t=>setSheet({k:'donate',id:t.id})} level=${level} setLevel=${setLevel} setSport=${setSport}/>`:null}
-    ${view.v==='admin'?html`<${Admin} M=${M} update=${update} reset=${reset} go=${go} level=${level} setLevel=${setLevel} setSport=${setSport}/>`:null}
-    ${sheet&&sheet.k==='game'?html`<${GameSheet} M=${M} g=${S.games.find(g=>g.id===sheet.id)} go=${go} onClose=${()=>setSheet(null)}/>`:null}
-    ${sheet&&sheet.k==='favs'?html`<${FavSheet} M=${M} favs=${favs} toggle=${toggle} onClose=${()=>setSheet(null)}/>`:null}
-    ${sheet&&sheet.k==='search'?html`<${SearchSheet} M=${M} go=${go} setSport=${setSport} setLevel=${setLevel} onClose=${()=>setSheet(null)}/>`:null}
-    ${sheet&&sheet.k==='donate'?html`<${DonateSheet} t=${M.T[sheet.id]} onClose=${()=>setSheet(null)}/>`:null}
+    ${view.v==='home'?html`<${Home} M=${M} favs=${favs} go=${go} tab=${homeTab} setTab=${setHomeTab} openGame=${openGame} openFavs=${()=>setSheet({k:'favs'})} level=${level} setLevel=${setLevel} setSport=${setSport} openSheet=${setSheet} ver=${ver}/>`:null}
+    ${view.v==='team'&&M.T[view.id]?html`<${TeamPage} M=${M} id=${view.id} tab=${view.tab||'schedule'} setTab=${t=>setView({...view,tab:t})} favs=${favs} toggle=${toggle} go=${go} openGame=${openGame} openDonate=${t=>setSheet({k:'donate',id:t.id})} level=${level} setLevel=${setLevel} setSport=${setSport} openSheet=${setSheet} ver=${ver}/>`:null}
+    ${view.v==='admin'?html`<${Admin} M=${M} update=${update} reset=${reset} go=${go} level=${level} setLevel=${setLevel} setSport=${setSport} me=${me} setMe=${setMe} openSheet=${setSheet} ver=${ver} bump=${bump}/>`:null}
+    ${view.v==='home'?html`<div class="note" style="padding-top:8px"><button class="link" style="min-height:44px;font-size:13px" onClick=${()=>setSheet({k:'install'})}>Add 208 Pressbox to your home screen</button></div>`:null}
+    ${sheet&&sheet.k==='game'&&sg?html`<${GameSheet} M=${MG} g=${sg} go=${go} onClose=${close} openSheet=${setSheet}/>`:null}
+    ${sheet&&sheet.k==='share'&&sg?html`<${ShareSheet} M=${MG} g=${sg} onClose=${close}/>`:null}
+    ${sheet&&sheet.k==='report'&&sg?html`<${ReportSheet} M=${MG} g=${sg} onClose=${()=>{close();bump()}}/>`:null}
+    ${sheet&&sheet.k==='install'?html`<${InstallSheet} onClose=${close}/>`:null}
+    ${sheet&&sheet.k==='upload'?html`<${UploadSheet} M=${M} team=${sheet.team} onClose=${close} onDone=${bump}/>`:null}
+    ${sheet&&sheet.k==='photo'?html`<${PhotoSheet} M=${M} p=${sheet.p} onClose=${close} onDone=${bump}/>`:null}
+    ${sheet&&sheet.k==='favs'?html`<${FavSheet} M=${M} favs=${favs} toggle=${toggle} onClose=${close}/>`:null}
+    ${sheet&&sheet.k==='search'?html`<${SearchSheet} M=${M} go=${go} setSport=${setSport} setLevel=${setLevel} onClose=${close}/>`:null}
+    ${sheet&&sheet.k==='donate'?html`<${DonateSheet} t=${M.T[sheet.id]} onClose=${close}/>`:null}
+    ${toast?html`<div class="toast" role="status">${toast}</div>`:null}
   </div>`;
 }
 render(html`<${App}/>`,document.getElementById('app'));

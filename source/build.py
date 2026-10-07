@@ -8,10 +8,16 @@ logos = {os.path.basename(p)[:-5]: "data:image/webp;base64," + base64.b64encode(
          for p in sorted(glob.glob("logos/*.webp"))}
 def uri(p, mime): return "data:%s;base64,%s" % (mime, base64.b64encode(open(p, "rb").read()).decode())
 brand = {"icon": uri("brand/icon-96.webp", "image/webp")}
-out = src.replace("/*BRAND*/", json.dumps(brand)).replace("/*LIB*/", lib).replace("/*DATA*/", data).replace("/*LOGOS*/", json.dumps(logos))
+# Playoff brackets are kept by hand in brackets.json and travel with the data.
+d = json.loads(data); d["brackets"] = json.load(open("brackets.json")) if os.path.exists("brackets.json") else []
+data = json.dumps(d, separators=(",", ":"))
+# firebase.json holds the shared database's web config. Without it the app keeps admin changes on one device.
+fb = open("firebase.json").read().strip() if os.path.exists("firebase.json") else "null"
+out = src.replace("/*BRAND*/", json.dumps(brand)).replace("/*LIB*/", lib).replace("/*DATA*/", data).replace("/*LOGOS*/", json.dumps(logos)).replace("/*FIREBASE*/null", fb)
 os.makedirs("dist", exist_ok=True)
 open("dist/preview.html", "w").write(out)
-out = out.replace("/*ADMIN*/true", "location.hash==='#admin'")
+out = out.replace("/*ADMIN*/true", "location.hash==='#admin'").replace("/*PREVIEW*/true", "false")
+out = out.replace('<meta charset="utf-8">\n', '', 1)
 head, body = out.split('<div id="app">', 1)
 full = ('<!doctype html><html lang="en"><head><meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">'
