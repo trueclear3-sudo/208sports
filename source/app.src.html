@@ -234,12 +234,12 @@ function applyPatch(seed,p,live){
   S.teams.forEach(t=>{const e=(p.teams||{})[t.id];if(e)Object.assign(t,e);t.favBiz=(p.favBiz||{})[t.id]||[];
     Object.keys(p.rosters||{}).forEach(k=>{const[tid,sp,lv]=k.split('|');if(tid===t.id){t.rosters[sp]=t.rosters[sp]||{};t.rosters[sp][lv]=p.rosters[k]}})});
   S.flags=S.flags.filter(f=>!(p.flagsDone||[]).includes(f));
-  S.polls=p.polls||[];S.recaps=p.recaps||{};S.look=p.look||'chalk';
+  S.polls=p.polls||[];S.recaps=p.recaps||{};S.look=p.look||'board';
   return S;
 }
 function derivePatch(S){
   const J=JSON.stringify,sg={},st={};SEED.games.forEach(g=>sg[g.id]=g);SEED.teams.forEach(t=>st[t.id]=t);
-  const p={scores:{},sponsors:{},rosters:{},teams:{},favBiz:{},businesses:S.businesses||[],flagsDone:SEED.flags.filter(f=>!S.flags.includes(f)),polls:S.polls||[],recaps:S.recaps||{},look:S.look||'chalk'};
+  const p={scores:{},sponsors:{},rosters:{},teams:{},favBiz:{},businesses:S.businesses||[],flagsDone:SEED.flags.filter(f=>!S.flags.includes(f)),polls:S.polls||[],recaps:S.recaps||{},look:S.look||'board'};
   S.games.forEach(g=>{const o=sg[g.id];if(!o)return;if(g.hs!==o.hs||g.as!==o.as)p.scores[g.id]=[g.as??null,g.hs??null];if(g.sponsors.length)p.sponsors[g.id]={mode:g.sponsorMode,list:g.sponsors}});
   S.teams.forEach(t=>{const o=st[t.id];if(!o)return;if(t.favBiz.length)p.favBiz[t.id]=t.favBiz;
     if(t.name!==o.name||t.mascot!==o.mascot||J(t.links)!==J(o.links))p.teams[t.id]={name:t.name,mascot:t.mascot,links:t.links};
@@ -693,7 +693,7 @@ function Playoffs({M,go,openGame}){
 }
 
 /* ---------- Admin ---------- */
-const LOOKS=[['chalk',"Today's look"],['board',"Coach's chalkboard"],['score','Scoreboard']];
+const LOOKS=[['board',"Coach's chalkboard"],['score','Scoreboard'],['chalk','Original']];
 function Admin({M,update,reset,go,level,setLevel,setSport,me,setMe,openSheet,ver,bump}){
   const[tab,setTab]=useState('scores');const S=M.S;const[busy,setBusy]=useState(false);
   const sign=async()=>{setBusy(true);try{await DB.signIn();setMe({...DB.me});if(!DB.me.admin)SAY('That account is not the 208 Pressbox admin.')}catch(e){console.warn(e);SAY('Sign-in did not finish. Try again.')}setBusy(false)};
@@ -704,7 +704,7 @@ function Admin({M,update,reset,go,level,setLevel,setSport,me,setMe,openSheet,ver
   <div class="hero" style="padding-bottom:12px"><div><h1>Admin</h1><p>Small changes without uploading files.</p></div></div>
   <div class="banner">${DB.kind==='fire'?html`Signed in as ${me.email}. Changes save for everyone right away. <button class="link" style="min-height:0" onClick=${async()=>{await DB.signOut();setMe({...DB.me})}}>Sign out</button>`
     :html`The shared database is not connected yet, so changes here save in this browser only. <button class="link" style="min-height:0" onClick=${reset}>Reset my changes</button>`}</div>
-  <div class="row" style="flex-wrap:wrap;margin-top:12px"><span class="note">App look</span><div class="chips">${LOOKS.map(([k,l])=>html`<button class="chip" aria-pressed=${(S.look||'chalk')===k} onClick=${()=>update(s=>{s.look=k})}>${l}</button>`)}</div></div>
+  <div class="row" style="flex-wrap:wrap;margin-top:12px"><span class="note">App look</span><div class="chips">${LOOKS.map(([k,l])=>html`<button class="chip" aria-pressed=${(S.look||'board')===k} onClick=${()=>update(s=>{s.look=k})}>${l}</button>`)}</div></div>
   <nav class="tabs" style="margin-top:14px" aria-label="Admin sections">${[['scores','Scores']].concat(COMMUNITY?[['inbox','Inbox'],['fans','Fans'],['reach','Reach']]:[],[['sponsors','Sponsors'],['rosters','Rosters'],['teams','Teams'],['review','Needs a look ('+S.flags.length+')']]).map(([k,l])=>html`<button class="tab" aria-current=${tab===k?'page':null} onClick=${()=>setTab(k)}>${l}</button>`)}</nav>
   <section class="sec">
     ${tab==='scores'?html`<${Sports} M=${M} setSport=${setSport}/><${Levels} level=${level} setLevel=${setLevel} M=${M}/><${AdmScores} M=${M} update=${update}/>`:null}
@@ -849,7 +849,7 @@ function App(){
     dbReady.then(()=>{setMe({...DB.me});off.push(DB.watch('state','admin',d=>{if(d&&!saveT.current)setPatch(d)}));off.push(DB.watch('state','live',d=>setLive(d||{})))});countVisit();
     const h=()=>{if(document.visibilityState!=='hidden')return;flushTrack();if(saveT.current){clearTimeout(saveT.current);saveT.current=null;DB.set('state','admin',pref.current).catch(()=>{})}};document.addEventListener('visibilitychange',h);
     return()=>{off.forEach(f=>f&&f());document.removeEventListener('visibilitychange',h)}},[]);
-  useEffect(()=>{document.documentElement.setAttribute('data-look',S.look||'chalk')},[S.look]);
+  useEffect(()=>{document.documentElement.setAttribute('data-look',S.look||'board')},[S.look]);
   const setSport=id=>{setSportRaw(id);const sp=S.sports.find(x=>x.id===id);if(sp&&!(sp.levels||['v']).includes(level))setLevel('v')};
   const M=useMemo(()=>model(S,sport,level),[S,sport,level]);
   const update=fn=>{const n=applyPatch(SEED,pref.current,null);fn(n);const p=derivePatch(n);setPatch(p);

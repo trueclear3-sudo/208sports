@@ -1,6 +1,6 @@
 # 208 Pressbox
 
-Local high school sports for Eastern Idaho: schedules, scores, standings, rosters and stat leaders for 13 football teams (Varsity, JV and Freshman), with places for booster-club donations and local business sponsors.
+Local high school sports for Eastern Idaho: schedules, scores, standings and rosters for 13 schools (football, soccer and basketball), plus score reports from fans, pick'em, player of the week voting, photos and playoff brackets, with places for booster-club donations and local business sponsors.
 
 ## What's in this folder
 
@@ -28,7 +28,10 @@ Rosters and stat leaders are a snapshot (`source/static.json`) and do not update
 
 ## Changing things
 
-- **Admin screen:** add `#admin` to the end of the site address to show the gear button. For now, admin changes save only on the device that made them.
+- **Admin screen:** add `#admin` to the end of the site address to show the gear button, then sign in with the owner's Google account. Changes save to the shared database (Firebase project in `source/firebase.json`) and show for everyone. The Inbox tab holds reported scores, trusted-source applications and photos waiting for approval.
+- **App look:** chosen in the admin screen (coach's chalkboard, scoreboard or the original).
+- **Playoff brackets:** kept by hand in `source/brackets.json`.
+- **Database rules:** pasted into the Firebase console; `source/e2e/test.py` checks them in a real browser.
 - **Adding a team or sport:** edit `source/config.json`. Each team has one MaxPreps link; each sport lists the path that follows it.
 - **Rebuilding by hand:** `python3 source/updater/update.py` does everything: pulls scores, rebuilds `index.html`.
 
