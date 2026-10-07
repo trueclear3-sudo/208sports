@@ -107,16 +107,106 @@ tr.me td{background:rgba(255,184,28,.08)}
 <div id="app"></div>
 <script>/*LIB*/</script>
 <script>
-const {html,render,useState,useMemo}=htmPreact;
+const {html,render,useState,useMemo,useEffect,useRef}=htmPreact;
 const SEED=/*DATA*/;
 const LOGO=/*LOGOS*/;
 const BRAND=/*BRAND*/;
 const SHOW_ADMIN=/*ADMIN*/true; // the published site only shows the admin gear at  .../#admin
-const KEY='pb_preview3_'+SEED.pulled, FAVKEY='pb_favs';
+const FB=/*FIREBASE*/null;      // filled in from source/firebase.json once the shared database exists
+const PREVIEW=/*PREVIEW*/true;  // true only in the Claude preview build
+const COMMUNITY=!!FB||PREVIEW;  // reporting, pick'em, voting and photos need the shared database
+const SITE='https://trueclear3-sudo.github.io/208sports/';
+const FAVKEY='pb_favs';
 const clone=o=>JSON.parse(JSON.stringify(o));
-function loadState(){try{const s=localStorage.getItem(KEY);if(s){const p=JSON.parse(s);if(p&&p.teams&&p.games)return p}}catch(e){}return clone(SEED)}
-function saveState(s){try{localStorage.setItem(KEY,JSON.stringify(s));return true}catch(e){return false}}
-function loadFavs(){try{const s=JSON.parse(localStorage.getItem(FAVKEY));if(Array.isArray(s))return s}catch(e){}return['idf','sky','rig','bon']}
+const ls={get:k=>{try{return localStorage.getItem(k)}catch(e){return null}},set:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}},json:k=>{try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}}};
+function loadFavs(){const s=ls.json(FAVKEY);return Array.isArray(s)?s:['idf','sky','rig','bon']}
+
+/* ---------- Shared database ----------
+   One small interface with two engines behind it. With a Firebase config the app talks to Firestore, so every phone
+   sees the same thing. Without one it keeps everything in this browser (the old behavior, and what the preview uses).
+   Collections: state/admin (the owner's edits), state/live (scores from trusted sources), reports, applications,
+   trusted, picks, boards, votes, photos + photoFull, flags, visits, stats. */
+const deepMerge=(a,b)=>{const o={...a};Object.keys(b).forEach(k=>{o[k]=b[k]&&typeof b[k]==='object'&&!Array.isArray(b[k])&&a&&a[k]&&typeof a[k]==='object'?deepMerge(a[k],b[k]):b[k]});return o};
+const deepAdd=(a,b)=>{const o={...(a||{})};Object.keys(b).forEach(k=>{o[k]=typeof b[k]==='number'?(o[k]||0)+b[k]:deepAdd(o[k],b[k])});return o};
+const newId=()=>String(1e13-Date.now()).padStart(13,'0')+Math.random().toString(36).slice(2,6); // sorts newest first
+function localDB(){
+  const K='pb_db1',VOLATILE=['photos','photoFull'];let mem=ls.json(K)||{};
+  const save=()=>{const o={};Object.keys(mem).forEach(c=>{if(!VOLATILE.includes(c))o[c]=mem[c]});ls.set(K,JSON.stringify(o))};
+  let uid=ls.get('pb_uid');if(!uid){uid='u'+Math.random().toString(36).slice(2,12);ls.set('pb_uid',uid)}
+  const col=c=>mem[c]=mem[c]||{},subs=[];
+  const ok=(d,w)=>(w||[]).every(([f,op,v])=>op==='=='?d[f]===v:true);
+  const me={uid,admin:true,trusted:!!col('trusted')[uid],email:''};
+  return{kind:'local',me,stamp:()=>Date.now(),
+    get:async(c,id)=>col(c)[id]?{id,...clone(col(c)[id])}:null,
+    set:async(c,id,d,merge)=>{col(c)[id]=merge?deepMerge(col(c)[id]||{},d):d;if(c==='trusted')me.trusted=!!col(c)[uid];save();subs.forEach(x=>x[0]===c&&x[1]===id&&x[2]())},
+    add:async(c,d)=>{const id=newId();col(c)[id]=d;save();return id},
+    del:async(c,id)=>{delete col(c)[id];if(c==='trusted')me.trusted=!!col(c)[uid];save()},
+    list:async(c,w,o)=>{let r=Object.keys(col(c)).sort().map(id=>({id,...clone(col(c)[id])})).filter(d=>ok(d,w));return o&&o.limit?r.slice(0,o.limit):r},
+    count:async(c,w)=>Object.values(col(c)).filter(d=>ok(d,w)).length,
+    inc:async(c,id,d)=>{col(c)[id]=deepAdd(col(c)[id],d);save()},
+    watch:(c,id,cb)=>{const f=()=>cb(col(c)[id]?clone(col(c)[id]):null),x=[c,id,f];subs.push(x);f();return()=>{subs.splice(subs.indexOf(x),1)}},
+    signIn:async()=>{},signOut:async()=>{}};
+}
+async function fireDB(cfg){
+  const B='https://www.gstatic.com/firebasejs/10.14.1/firebase-';
+  const[A,U,F]=await Promise.all([import(B+'app.js'),import(B+'auth.js'),import(B+'firestore.js')]);
+  const app=A.initializeApp(cfg),auth=U.getAuth(app),db=F.getFirestore(app);
+  const norm=v=>v&&typeof v.toMillis==='function'?v.toMillis():Array.isArray(v)?v.map(norm):v&&typeof v==='object'?Object.fromEntries(Object.entries(v).map(([k,x])=>[k,norm(x)])):v;
+  const row=s=>({id:s.id,...norm(s.data())});
+  const q=(c,w,o)=>{const p=(w||[]).map(([f,op,v])=>F.where(f,op,v));if(o&&o.limit)p.push(F.limit(o.limit));return F.query(F.collection(db,c),...p)};
+  const incs=d=>Object.fromEntries(Object.entries(d).map(([k,v])=>[k,typeof v==='number'?F.increment(v):incs(v)]));
+  const me={uid:null,admin:false,trusted:false,email:''};
+  const who=async u=>{me.uid=u.uid;me.email=u.email||'';me.admin=false;me.trusted=false;
+    if(u.email){try{await F.getDoc(F.doc(db,'adminCheck','x'));me.admin=true}catch(e){}}   // only the owner's account may read this
+    try{me.trusted=(await F.getDoc(F.doc(db,'trusted',u.uid))).exists()}catch(e){}};
+  await new Promise((res,rej)=>{const off=U.onAuthStateChanged(auth,async u=>{off();try{if(!u)u=(await U.signInAnonymously(auth)).user;await who(u);res()}catch(e){rej(e)}})});
+  return{kind:'fire',me,stamp:()=>F.serverTimestamp(),
+    get:async(c,id)=>{const s=await F.getDoc(F.doc(db,c,id));return s.exists()?row(s):null},
+    set:(c,id,d,merge)=>F.setDoc(F.doc(db,c,id),d,{merge:!!merge}),
+    add:async(c,d)=>{const id=newId();await F.setDoc(F.doc(db,c,id),d);return id},
+    del:(c,id)=>F.deleteDoc(F.doc(db,c,id)),
+    list:async(c,w,o)=>(await F.getDocs(q(c,w,o))).docs.map(row),
+    count:async(c,w)=>(await F.getCountFromServer(q(c,w))).data().count,
+    inc:(c,id,d)=>F.setDoc(F.doc(db,c,id),incs(d),{merge:true}),
+    watch:(c,id,cb)=>F.onSnapshot(F.doc(db,c,id),s=>cb(s.exists()?norm(s.data()):null),()=>{}),
+    signIn:async()=>{const r=await U.signInWithPopup(auth,new U.GoogleAuthProvider());await who(r.user)},
+    signOut:async()=>{await U.signOut(auth);await who((await U.signInAnonymously(auth)).user)}};
+}
+let DB=localDB();
+const dbReady=FB?fireDB(FB).then(d=>{DB=d;return d}).catch(e=>{console.warn('Shared database unavailable, using this device only',e);return DB}):Promise.resolve(DB);
+
+/* The owner's edits are stored as a small list of differences from the published data, not a copy of it,
+   so a score update from MaxPreps never wipes them out. */
+function applyPatch(seed,p,live){
+  const S=clone(seed);p=p||{};S.brackets=S.brackets||[];
+  S.games.forEach(g=>{const sc=(p.scores||{})[g.id],sp=(p.sponsors||{})[g.id],lv=(live||{})[g.id];
+    if(lv&&g.hs==null&&!sc&&(/^Final/.test(lv.st)||Date.now()-lv.at<6*3600e3)){g.as=lv.as;g.hs=lv.hs;g.live=lv;if(!/^Final/.test(lv.st))g.inprog=true;else if(/OT/.test(lv.st))g.note='OT'}
+    if(sc){g.as=sc[0]??null;g.hs=sc[1]??null}
+    if(sp){g.sponsorMode=sp.mode;g.sponsors=sp.list||[]}});
+  if(p.businesses)S.businesses=p.businesses;
+  S.teams.forEach(t=>{const e=(p.teams||{})[t.id];if(e)Object.assign(t,e);t.favBiz=(p.favBiz||{})[t.id]||[];
+    Object.keys(p.rosters||{}).forEach(k=>{const[tid,sp,lv]=k.split('|');if(tid===t.id){t.rosters[sp]=t.rosters[sp]||{};t.rosters[sp][lv]=p.rosters[k]}})});
+  S.flags=S.flags.filter(f=>!(p.flagsDone||[]).includes(f));
+  S.polls=p.polls||[];S.recaps=p.recaps||{};
+  return S;
+}
+function derivePatch(S){
+  const J=JSON.stringify,sg={},st={};SEED.games.forEach(g=>sg[g.id]=g);SEED.teams.forEach(t=>st[t.id]=t);
+  const p={scores:{},sponsors:{},rosters:{},teams:{},favBiz:{},businesses:S.businesses||[],flagsDone:SEED.flags.filter(f=>!S.flags.includes(f)),polls:S.polls||[],recaps:S.recaps||{}};
+  S.games.forEach(g=>{const o=sg[g.id];if(!o)return;if(g.hs!==o.hs||g.as!==o.as)p.scores[g.id]=[g.as??null,g.hs??null];if(g.sponsors.length)p.sponsors[g.id]={mode:g.sponsorMode,list:g.sponsors}});
+  S.teams.forEach(t=>{const o=st[t.id];if(!o)return;if(t.favBiz.length)p.favBiz[t.id]=t.favBiz;
+    if(t.name!==o.name||t.mascot!==o.mascot||J(t.links)!==J(o.links))p.teams[t.id]={name:t.name,mascot:t.mascot,links:t.links};
+    Object.keys(t.rosters).forEach(sp=>Object.keys(t.rosters[sp]).forEach(lv=>{if(J(t.rosters[sp][lv])!==J((o.rosters[sp]||{})[lv]||[]))p.rosters[t.id+'|'+sp+'|'+lv]=t.rosters[sp][lv]}))});
+  return clone(p);
+}
+let SAY=()=>{};   // small pop-up message, set by App
+const myName=()=>ls.get('pb_name')||'';
+/* Reach numbers for schools and sponsors: counted in small batches so a busy night stays inside the free database limits. */
+const pend={},seen=new Set();let pendT;
+function track(a,b,once){if(!COMMUNITY||DB.me.admin&&DB.kind==='fire')return;if(once){if(seen.has(a+b))return;seen.add(a+b)}pend[a]=pend[a]||{};pend[a][b]=(pend[a][b]||0)+1;clearTimeout(pendT);pendT=setTimeout(flushTrack,5000)}
+function flushTrack(){const d={};Object.keys(pend).forEach(k=>{d[k]=pend[k];delete pend[k]});if(Object.keys(d).length)dbReady.then(()=>DB.inc('stats',todayISO(),d)).catch(()=>{})}
+function countVisit(){if(!COMMUNITY)return;const d=todayISO();if(ls.get('pb_visit')===d)return;dbReady.then(()=>{if(DB.me.admin&&DB.kind==='fire')return;return DB.set('visits',d+'__'+DB.me.uid,{day:d,uid:DB.me.uid,home:standalone()}).then(()=>ls.set('pb_visit',d))}).catch(()=>{})}
+const standalone=()=>{try{return matchMedia('(display-mode: standalone)').matches||navigator.standalone===true}catch(e){return false}};
 const DAYS=['SUN','MON','TUE','WED','THU','FRI','SAT'],MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const D=iso=>{const[y,m,d]=iso.split('-').map(Number);return new Date(y,m-1,d)};
 const dshort=iso=>{const d=D(iso);return DAYS[d.getDay()]+' '+(d.getMonth()+1)+'/'+d.getDate()};
@@ -124,13 +214,17 @@ const fmtDay=s=>{const d=new Date(/T/.test(s)?s:s+'T12:00:00');return isNaN(d)?s
 const fmtStamp=s=>{const d=new Date(s);if(isNaN(d)||!/T/.test(s||''))return null;let h=d.getHours();const m=String(d.getMinutes()).padStart(2,'0');return MON[d.getMonth()]+' '+d.getDate()+', '+((h%12)||12)+':'+m+' '+(h>=12?'PM':'AM')};
 const todayISO=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 const weekKey=iso=>{const d=D(iso);d.setDate(d.getDate()-((d.getDay()+6)%7));return d.getTime()};
-const played=g=>g.hs!=null&&g.as!=null;
+const played=g=>g.hs!=null&&g.as!=null&&!g.inprog;
+const hasScore=g=>g.hs!=null&&g.as!=null;
+const kickoff=g=>{const d=D(g.date),m=/^(\d+):(\d+) (AM|PM)$/.exec(g.time||'');if(m)d.setHours(+m[1]%12+(m[3]==='PM'?12:0),+m[2]);return d.getTime()};
+const mondayOf=iso=>{const d=D(iso);d.setDate(d.getDate()-((d.getDay()+6)%7));return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+const clockOf=ms=>{const d=new Date(ms);return((d.getHours()%12)||12)+':'+String(d.getMinutes()).padStart(2,'0')+' '+(d.getHours()>=12?'PM':'AM')};
 const CATS=[['RUSH','Rushing','yds/game'],['REC','Receiving','yds/game'],['TD','Total TDs',''],['PTD','Passing TDs',''],['TKL','Tackles','per game'],['SACK','Sacks',''],['INT','Interceptions','']];
 const LV={v:'Varsity',jv:'JV',fr:'Freshman'},LVPATH={v:'',jv:'jv/',fr:'freshman/'};
 const mpLink=(t,page,lv,sp)=>(t.links[sp||'football']||'').replace(/\/?$/,'/')+LVPATH[lv||'v']+page+'/';
 
 function model(S,sport,level){
-  const soccer=sport!=='football',sp=S.sports.find(x=>x.id===sport)||S.sports[0];
+  const soccer=/soc$/.test(sport),sp=S.sports.find(x=>x.id===sport)||S.sports[0];
   const G=S.games.filter(g=>(g.sport||'football')===sport&&(g.level||'v')===level);
   const T={};S.teams.forEach(t=>T[t.id]=t);
   const B={};S.businesses.forEach(b=>B[b.id]=b);
@@ -143,10 +237,11 @@ function model(S,sport,level){
   const weeks=[];G.forEach(g=>{const k=weekKey(g.date);let w=weeks.find(x=>x.k===k);if(!w)weeks.push(w={k,first:g.date,games:[]});w.games.push(g)});
   weeks.forEach((w,i)=>{const d=D(w.first);w.label='Wk '+(i+1)+' · '+MON[d.getMonth()]+' '+d.getDate()});
   const t0=todayISO();let cur=weeks.findIndex(w=>w.games.some(g=>!played(g)&&g.date>=t0));if(cur<0)cur=weeks.length-1;
-  return{S,G,sport,soccer,sp,level,T,B,sideOf,isConf,gamesOf,rec,confs,standings,weeks,cur};
+  const recAt=(id,date)=>{let w=0,l=0,t=0,run=0;gamesOf(id).forEach(g=>{if(!played(g)||g.date>date)return;const mine=g.home===id?g.hs:g.as,th=g.home===id?g.as:g.hs;if(mine>th){w++;run=run>0?run+1:1}else if(mine<th){l++;run=run<0?run-1:-1}else{t++;run=0}});return{all:w+'-'+l+(t?'-'+t:''),run}};
+  return{S,G,sport,soccer,fb:sport==='football',sp,level,T,B,sideOf,isConf,gamesOf,rec,recAt,confs,standings,weeks,cur};
 }
 const NOTE={FF:'FORFEIT',OT:'FINAL/OT'};
-const status=g=>played(g)?{t:(NOTE[g.note]||(g.note?'FINAL/'+g.note:'FINAL'))+' · '+dshort(g.date),up:false}:g.date<todayISO()?{t:dshort(g.date)+' · SCORE NOT POSTED',up:false}:{t:dshort(g.date)+' · '+(g.time||'TIME TBD'),up:true};
+const status=g=>g.inprog?{t:'LIVE · '+g.live.st,up:true,live:true}:played(g)?{t:(NOTE[g.note]||(g.note?'FINAL/'+g.note:'FINAL'))+' · '+dshort(g.date),up:false}:g.date<todayISO()?{t:dshort(g.date)+' · SCORE NOT POSTED',up:false}:{t:dshort(g.date)+' · '+(g.time||'TIME TBD'),up:true};
 function sponsorLine(M,g){
   if(!g.sponsors.length)return null;
   const nm=id=>(M.B[id]||{}).name||'Sponsor';
@@ -167,6 +262,8 @@ const Ico={
   gear:html`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.3l2-1.5-2-3.4-2.3 1a7 7 0 0 0-2.3-1.3L14 3h-4l-.3 2.5a7 7 0 0 0-2.3 1.3l-2.3-1-2 3.4 2 1.5a7 7 0 0 0 0 2.6l-2 1.5 2 3.4 2.3-1a7 7 0 0 0 2.3 1.3L10 21h4l.3-2.5a7 7 0 0 0 2.3-1.3l2.3 1 2-3.4-2-1.5c.1-.4.1-.9.1-1.3z"/></svg>`,
   plus:html`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>`,
   back:html`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>`,
+  share:html`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M8 7l4-4 4 4M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>`,
+  camera:html`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>`,
   heart:html`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.600-7 10-7 10z"/></svg>`
 };
 function Sports({M,setSport}){
@@ -182,19 +279,24 @@ function Sheet({title,onClose,children}){
 }
 function GameCard({M,g,go,open}){
   const h=M.sideOf(g,'home'),a=M.sideOf(g,'away'),st=status(g),pl=played(g),sp=sponsorLine(M,g);
-  const first=g.siteUnknown?[a,h]:[a,h];
-  const rowOf=(s,other)=>html`<div class=${'trow'+(pl&&s.score<other.score?' lose':'')}><${Logo} id=${s.id} name=${s.name}/><span class="nm">${s.name}</span>${pl?html`<span class="score">${s.score}</span>`:null}</div>`;
+  const first=[a,h];if(sp)g.sponsors.forEach(x=>track('sponsorSeen',x.biz,true));
+  const rowOf=(s,other)=>html`<div class=${'trow'+(pl&&s.score<other.score?' lose':'')}><${Logo} id=${s.id} name=${s.name}/><span class="nm">${s.name}</span>${hasScore(g)?html`<span class="score">${s.score}</span>`:null}</div>`;
   return html`<button class="card" onClick=${()=>open(g)} aria-label=${a.name+' at '+h.name}>
-    <div class="meta"><span>${M.level==='v'?'':LV[M.level]+' '}${M.sp.name}${M.isConf(g)?' · Conf':''}</span><span class=${st.up?'up':''}>${st.t}</span></div>
+    <div class="meta"><span>${M.level==='v'?'':LV[M.level]+' '}${M.sp.name}${M.isConf(g)?' · Conf':''}</span><span class=${st.live?'live':st.up?'up':''}>${st.t}</span></div>
     ${rowOf(first[0],first[1])}${rowOf(first[1],first[0])}
     <div class="spon">${sp||html`${g.siteUnknown?'Site to confirm':'at '+h.name} · Matchup sponsor open`}</div>
   </button>`;
 }
-function GameSheet({M,g,go,onClose}){
-  const h=M.sideOf(g,'home'),a=M.sideOf(g,'away'),st=status(g),pl=played(g),sp=sponsorLine(M,g);
-  const row=s=>html`<button class="li" disabled=${!s.id} onClick=${()=>{if(s.id){onClose();go({v:'team',id:s.id})}}}><${Logo} id=${s.id} name=${s.name} size=${40}/><span class="grow"><b>${s.name}</b>${s.id?html`<div class="sub">${M.T[s.id].mascot} · ${M.rec(s.id).all}</div>`:html`<div class="sub">Not in 208 Pressbox</div>`}</span>${pl?html`<span class="score">${s.score}</span>`:null}</button>`;
+function GameSheet({M,g,go,onClose,openSheet}){
+  const h=M.sideOf(g,'home'),a=M.sideOf(g,'away'),st=status(g),pl=played(g),sp=sponsorLine(M,g),rc=recap(M,g);
+  const canReport=COMMUNITY&&g.date<=todayISO();
+  const row=s=>html`<button class="li" disabled=${!s.id} onClick=${()=>{if(s.id){onClose();go({v:'team',id:s.id})}}}><${Logo} id=${s.id} name=${s.name} size=${40}/><span class="grow"><b>${s.name}</b>${s.id?html`<div class="sub">${M.T[s.id].mascot} · ${M.rec(s.id).all}</div>`:html`<div class="sub">Not in 208 Pressbox</div>`}</span>${hasScore(g)?html`<span class="score">${s.score}</span>`:null}</button>`;
   return html`<${Sheet} title=${st.t} onClose=${onClose}>
     <div class="list">${row(a)}${row(h)}</div>
+    ${g.live?html`<div class="note">${g.inprog?'Live score':'Final'} reported by ${g.live.by||'a trusted source'} at ${clockOf(g.live.at)}. MaxPreps has not posted this game yet.</div>`:null}
+    <div class="row" style="flex-wrap:wrap">${pl?html`<button class="btn pri" onClick=${()=>openSheet({k:'share',id:g.id})}>${Ico.share} Share score</button>`:null}
+      ${canReport?html`<button class="btn" onClick=${()=>openSheet({k:'report',id:g.id})}>${pl?'Report a correction':'Report score'}</button>`:null}</div>
+    ${rc?html`<h3 class="eyebrow">Recap</h3><div class="card"><div>${rc.text}</div>${rc.auto?html`<div class="note">Written automatically from the scores in the app.</div>`:null}</div>`:null}
     <div class="note">${g.siteUnknown?'Both schools list this as a home game. Site to confirm.':'Played at '+h.name}${M.isConf(g)?' · Conference game':g.post?'':' · Non-conference'}</div>
     <h3 class="eyebrow">Matchup sponsor</h3>
     ${sp?html`<div class="card"><div>${sp}</div></div>`:html`<div class="slot"><strong>This game is open</strong><span>One business can sponsor the matchup, and the winning school's boosters get the money. Or each team can have its own sponsor.</span></div>`}
@@ -278,6 +380,260 @@ function DonateSheet({t,onClose}){
   return html`<${Sheet} title=${'Support '+t.name} onClose=${onClose}>
     <div class="row"><${Logo} id=${t.id} size=${56}/><div><b style="font-size:17px">${t.name} ${t.mascot} boosters</b><div class="note">Online giving is not open yet.</div></div></div>
     <div class="slot"><strong>Coming soon</strong><span>This is where fans will give to the ${t.name} booster club. Amounts, payment and receipts get built in the next phase.</span></div><//>`;
+}
+
+/* ---------- Small helpers for the fan features ---------- */
+function useLoad(fn,deps){const[v,setV]=useState(null);const[n,setN]=useState(0);
+  useEffect(()=>{let on=true;setV(null);dbReady.then(fn).then(x=>{if(on)setV(x==null?false:x)}).catch(e=>{console.warn(e);if(on)setV(false)});return()=>{on=false}},[...deps,n]);
+  return[v,()=>setN(x=>x+1)]}
+const nice=iso=>{const d=D(iso);return['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()]+' '+(d.getMonth()+1)+'/'+d.getDate()};
+const shareLink=async(title,text,url)=>{try{if(navigator.share){await navigator.share({title,text,url});return}}catch(e){if(e&&e.name==='AbortError')return}
+  try{await navigator.clipboard.writeText(url);SAY('Link copied.')}catch(e){SAY(url)}};
+
+/* ---------- Recaps: written from the scores only, so nothing is made up ---------- */
+const MARGIN={football:[3,8,28],bsoc:[1,1,4],gsoc:[1,1,4]};
+function recap(M,g){
+  const own=(M.S.recaps||{})[g.id];if(own)return{text:own,auto:false};
+  if(!played(g))return null;
+  const h=M.sideOf(g,'home'),a=M.sideOf(g,'away');
+  if(g.hs===g.as)return{text:a.name+' and '+h.name+' finished tied '+g.as+'-'+g.hs+'.',auto:true};
+  const w=g.hs>g.as?h:a,l=w===h?a:h,d=w.score-l.score,m=MARGIN[M.sport]||[3,8,25];
+  const verb=g.note==='FF'?'won by forfeit over':l.score===0&&M.fb?'shut out':d<=m[0]?'edged':d<=m[1]?'held off':d>=m[2]?'rolled past':'beat';
+  let t=w.name+' '+verb+' '+l.name+' '+w.score+'-'+l.score+(g.siteUnknown||g.note==='FF'?'':w===a?' on the road':' at home')+(g.note==='OT'?' in overtime':'')+'.';
+  if(w.id){const r=M.recAt(w.id,g.date);t+=' '+w.name+' moved to '+r.all+(r.run>=3?' with '+r.run+' wins in a row':'')+'.'}
+  if(l.id){const r=M.recAt(l.id,g.date);t+=' '+l.name+' fell to '+r.all+(r.run<=-3?', '+(-r.run)+' losses in a row':'')+'.'}
+  [w,l].forEach(s=>{if(!s.id)return;const gs=M.gamesOf(s.id),later=gs.filter(x=>x.date>g.date);if(later.some(played))return;const nx=later[0];if(!nx)return;
+    const o=M.sideOf(nx,nx.home===s.id?'away':'home');t+=' Next for '+s.name+': '+nice(nx.date)+(nx.home===s.id?' vs ':' at ')+o.name+'.'});
+  return{text:t,auto:true};
+}
+
+/* ---------- Share a score as a picture ---------- */
+const loadImg=src=>new Promise(res=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>res(null);i.src=src});
+async function scoreCard(M,g){
+  const W=1080,c=document.createElement('canvas');c.width=c.height=W;const x=c.getContext('2d');
+  try{await Promise.all([document.fonts.load('700 120px "Cabin Sketch"'),document.fonts.load('600 60px Barlow')])}catch(e){}
+  const disp='"Cabin Sketch","Chalkboard SE",sans-serif',body='Barlow,system-ui,sans-serif';
+  x.fillStyle='#0E1116';x.fillRect(0,0,W,W);
+  for(let i=0;i<1400;i++){x.fillStyle='rgba(244,241,232,'+(Math.random()*.045).toFixed(3)+')';x.fillRect(Math.random()*W,Math.random()*W,2+Math.random()*26,1+Math.random()*2)}
+  x.strokeStyle='#4A5361';x.lineWidth=5;x.strokeRect(36,36,W-72,W-72);
+  x.textBaseline='middle';x.textAlign='left';x.font='700 92px '+disp;
+  const w1=x.measureText('208 ').width,w2=x.measureText('PRESSBOX').width,x0=(W-w1-w2)/2;
+  x.fillStyle='#FFB81C';x.fillText('208 ',x0,150);x.fillStyle='#F4F1E8';x.fillText('PRESSBOX',x0+w1,150);
+  const h=M.sideOf(g,'home'),a=M.sideOf(g,'away'),st=status(g);
+  x.textAlign='center';x.fillStyle='#A9B1BD';x.font='600 38px '+body;
+  x.fillText(((M.level==='v'?'':LV[M.level]+' ')+M.sp.name+'  ·  '+st.t).toUpperCase(),W/2,250);
+  const rows=[a,h];
+  for(let i=0;i<2;i++){const s=rows[i],o=rows[1-i],y=430+i*250,lose=s.score<o.score;
+    x.beginPath();x.arc(170,y,92,0,7);x.fillStyle=s.id&&LOGO[s.id]?'#fff':'#2A313C';x.fill();
+    const im=s.id&&LOGO[s.id]?await loadImg(LOGO[s.id]):null;
+    if(im){const k=Math.min(148/im.width,148/im.height);x.drawImage(im,170-im.width*k/2,y-im.height*k/2,im.width*k,im.height*k)}
+    else{x.fillStyle='#A9B1BD';x.font='700 64px '+disp;x.textAlign='center';x.fillText(s.name.replace(/[^A-Za-z ]/g,'').split(' ').map(v=>v[0]).join('').slice(0,2).toUpperCase(),170,y)}
+    x.textAlign='left';x.fillStyle=lose?'#A9B1BD':'#F2F4F7';let fs=70;do{x.font=(lose?'500 ':'600 ')+fs+'px '+body;fs-=4}while(x.measureText(s.name).width>500&&fs>30);
+    x.fillText(s.name,300,s.id?y-18:y);
+    if(s.id){x.fillStyle='#A9B1BD';x.font='500 34px '+body;x.fillText(M.T[s.id].mascot+'  ·  '+M.recAt(s.id,g.date).all,300,y+42)}
+    x.textAlign='right';x.fillStyle=lose?'#A9B1BD':'#F4F1E8';x.font='700 190px '+disp;x.fillText(String(s.score),W-90,y+6)}
+  x.strokeStyle='#2A313C';x.lineWidth=3;x.beginPath();x.moveTo(90,555);x.lineTo(W-90,555);x.stroke();
+  const sp=g.sponsors.length?g.sponsors.map(v=>(M.B[v.biz]||{}).name).filter(Boolean).join(' & '):'';
+  x.textAlign='center';
+  if(sp){x.fillStyle='#FFB81C';x.font='600 40px '+body;x.fillText('Matchup sponsor: '+sp,W/2,880)}
+  x.fillStyle='#A9B1BD';x.font='500 32px '+body;x.fillText('Local high school scores  ·  '+SITE.replace(/^https:\/\/|\/$/g,''),W/2,985);
+  return c;
+}
+function ShareSheet({M,g,onClose}){
+  const[url,setUrl]=useState(null);const blob=useRef(null);
+  const h=M.sideOf(g,'home'),a=M.sideOf(g,'away'),text=a.name+' '+g.as+', '+h.name+' '+g.hs+' on 208 Pressbox';
+  useEffect(()=>{let on=true;scoreCard(M,g).then(c=>c.toBlob(b=>{if(!on||!b)return;blob.current=b;setUrl(URL.createObjectURL(b))},'image/png'));return()=>{on=false}},[g.id]);
+  const file=()=>new File([blob.current],'208-pressbox-score.png',{type:'image/png'});
+  const can=(()=>{try{return!!blob.current&&navigator.canShare&&navigator.canShare({files:[file()]})}catch(e){return false}})();
+  const share=async()=>{try{await navigator.share({files:[file()],text:text+' '+SITE})}catch(e){}};
+  return html`<${Sheet} title="Share score" onClose=${onClose}>
+    ${url?html`<img src=${url} alt=${text} style="width:100%;border-radius:12px;border:1px solid var(--line)"/>
+      <div class="row" style="flex-wrap:wrap">${can?html`<button class="btn pri" onClick=${share}>${Ico.share} Share</button>`:null}<a class=${'btn'+(can?'':' pri')} href=${url} download="208-pressbox-score.png">Save picture</a></div>
+      <div class="note">Post it to Facebook, Instagram or a team group chat. The picture carries the app's address.</div>`
+    :html`<div class="note">Drawing the picture…</div>`}<//>`;
+}
+
+/* ---------- Add to home screen ---------- */
+let installEvt=null;window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installEvt=e});
+function device(){const u=navigator.userAgent,ios=/iPhone|iPad|iPod/.test(u)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1),inapp=/FBAN|FBAV|Instagram|Snapchat|Line\//.test(u);
+  if(ios)return inapp?'inapp':/CriOS/.test(u)?'ios-chrome':/FxiOS|EdgiOS/.test(u)?'ios-other':'ios';
+  if(/Android/.test(u))return inapp?'inapp':/SamsungBrowser/.test(u)?'samsung':'android';return'desktop'}
+const HOW={
+  ios:['iPhone (Safari)',['Tap the Share button, the square with an arrow pointing up. It sits in the bar at the bottom of Safari. If it is not there, tap the ••• button first.','Scroll down the list and tap "Add to Home Screen".','Tap "Add" in the top corner. The chalkboard icon lands on your home screen.']],
+  'ios-chrome':['iPhone (Chrome)',['Tap the Share button at the right end of the address bar.','Scroll down and tap "Add to Home Screen".','Tap "Add".']],
+  'ios-other':['iPhone',['Open this page in Safari. Other iPhone browsers cannot always add apps.','Tap the Share button, then "Add to Home Screen".','Tap "Add".']],
+  android:['Android (Chrome)',['Tap the ⋮ menu in the top right corner of Chrome.','Tap "Add to Home screen" or "Install app".','Tap "Add" or "Install".']],
+  samsung:['Samsung Internet',['Tap the ☰ menu in the bottom right corner.','Tap "Add to", then "Home screen".','Tap "Add".']],
+  inapp:['Open in your browser first',['You are inside another app, such as Facebook or Instagram, which cannot add apps. Tap the ••• or ⋮ menu.','Choose "Open in Safari", "Open in Chrome" or "Open in browser".','Then come back to this screen for the next steps.']]};
+function InstallSheet({onClose}){
+  const d=device(),show=d==='desktop'?['ios','android']:[d];
+  const go=async()=>{const e=installEvt;if(!e)return;installEvt=null;try{e.prompt();await e.userChoice}catch(x){}onClose()};
+  return html`<${Sheet} title="Add to home screen" onClose=${onClose}>
+    <div class="note">208 Pressbox works like an app once it is on your home screen: one tap to open, full screen, no app store.</div>
+    ${installEvt?html`<div><button class="btn pri" onClick=${go}>Install 208 Pressbox</button></div>`:null}
+    ${d==='desktop'?html`<div class="note">On your phone, open <b style="color:var(--fg)">${SITE.replace('https://','')}</b> and follow the steps for your phone.</div>`:null}
+    ${show.map(k=>html`<h3 class="eyebrow">${HOW[k][0]}</h3><div class="list">${HOW[k][1].map((s,i)=>html`<div class="li"><span class="num">${i+1}</span><span class="grow">${s}</span></div>`)}</div>`)}<//>`;
+}
+function InstallBar({open}){
+  const[hide,setHide]=useState(()=>standalone()||ls.get('pb_a2hs')==='x');
+  if(hide)return null;
+  return html`<div class="banner between"><span><b>Add 208 Pressbox to your home screen.</b> One tap to scores, no app store.</span>
+    <span class="row" style="flex:none"><button class="btn sm pri" onClick=${open}>Show me how</button><button class="link" aria-label="Dismiss" onClick=${()=>{ls.set('pb_a2hs','x');setHide(true)}}>Not now</button></span></div>`;
+}
+
+/* ---------- Report a score, and apply to be a trusted source ---------- */
+const PERIODS=sp=>sp==='football'?['1st Qtr','2nd Qtr','Halftime','3rd Qtr','4th Qtr','Final','Final/OT']:/soc$/.test(sp)?['1st Half','Halftime','2nd Half','Final','Final/OT']:['1st Qtr','2nd Qtr','Halftime','3rd Qtr','4th Qtr','Final','Final/OT'];
+const ROLES=['Parent','Coach or school staff','Student','Booster club','Media','Fan'];
+function ReportSheet({M,g,onClose}){
+  const h=M.sideOf(g,'home'),a=M.sideOf(g,'away');
+  const[f,setF]=useState({as:g.as??'',hs:g.hs??'',st:'Final',name:myName()});const[done,setDone]=useState(null);const[busy,setBusy]=useState(false);
+  const[ap,setAp]=useState({contact:'',team:g.home||g.away||M.S.teams[0].id,role:ROLES[0],note:''});
+  const good=f.as!==''&&f.hs!==''&&f.name.trim();
+  const send=async()=>{if(!good||busy)return;setBusy(true);const as=+f.as,hs=+f.hs,name=f.name.trim().slice(0,40);
+    try{await dbReady;ls.set('pb_name',name);const tr=DB.me.trusted;
+      await DB.add('reports',{game:g.id,label:a.name+' at '+h.name+' · '+dshort(g.date),sport:M.sp.name+(M.level==='v'?'':' '+LV[M.level]),as,hs,st:f.st,name,uid:DB.me.uid,status:tr?'auto':'new',at:DB.stamp()});
+      if(tr)await DB.set('state','live',{[g.id]:{as,hs,st:f.st,by:name,at:Date.now()}},true);
+      const old=tr?null:await DB.get('applications',DB.me.uid).catch(()=>null);
+      setDone({tr,applied:old?old.status:null});
+    }catch(e){console.warn(e);SAY('Could not send that. Check your connection and try again.')}setBusy(false)};
+  const apply=async()=>{if(!ap.contact.trim()||busy)return;setBusy(true);
+    try{await DB.set('applications',DB.me.uid,{name:f.name.trim().slice(0,40),contact:ap.contact.trim().slice(0,80),team:ap.team,role:ap.role,note:ap.note.trim().slice(0,300),uid:DB.me.uid,status:'new',at:DB.stamp()});setDone({...done,applied:'new'})}
+    catch(e){console.warn(e);SAY('Could not send that. Try again.')}setBusy(false)};
+  const num=k=>html`<input class="in sc" style="width:76px;font-size:26px" inputmode="numeric" id=${'rp-'+k} aria-label=${(k==='as'?a.name:h.name)+' score'} value=${f[k]} onInput=${e=>setF({...f,[k]:e.target.value.replace(/[^0-9]/g,'').slice(0,3)})}/>`;
+  if(done)return html`<${Sheet} title="Score sent" onClose=${onClose}>
+    <div class="card"><b>${a.name} ${f.as}, ${h.name} ${f.hs} · ${f.st}</b><div class="note">${done.tr?'You are a trusted source, so this is showing for everyone now.':'Thanks. 208 Pressbox checks it before it shows for everyone.'}</div></div>
+    ${done.tr?null:done.applied==='new'?html`<div class="note">Your trusted source application is waiting for approval.</div>`
+    :done.applied==='no'?null
+    :html`<h3 class="eyebrow">Be a trusted source</h3><div class="note">Trusted sources post scores straight to the app, live from the game. Tell us who you are and 208 Pressbox will get back to you.</div>
+      <div class="formrow"><label class="field">Phone or email<input id="ap-contact" value=${ap.contact} onInput=${e=>setAp({...ap,contact:e.target.value})}/></label>
+        <label class="field">Team you follow<select id="ap-team" value=${ap.team} onChange=${e=>setAp({...ap,team:e.target.value})}>${M.S.teams.map(t=>html`<option value=${t.id}>${t.name}</option>`)}</select></label>
+        <label class="field">You are a<select id="ap-role" value=${ap.role} onChange=${e=>setAp({...ap,role:e.target.value})}>${ROLES.map(r=>html`<option>${r}</option>`)}</select></label></div>
+      <label class="field">Anything else (optional)<input id="ap-note" value=${ap.note} onInput=${e=>setAp({...ap,note:e.target.value})} placeholder="Which games you are usually at"/></label>
+      <div class="row"><button class="btn pri" disabled=${!ap.contact.trim()||busy} onClick=${apply}>Apply</button><span class="note">Only the 208 Pressbox admin sees your contact info.</span></div>`}
+    <div><button class="btn" onClick=${onClose}>Done</button></div><//>`;
+  return html`<${Sheet} title="Report score" onClose=${onClose}>
+    <div class="list"><div class="li"><${Logo} id=${a.id} name=${a.name} size=${40}/><span class="grow"><b>${a.name}</b></span>${num('as')}</div>
+      <div class="li"><${Logo} id=${h.id} name=${h.name} size=${40}/><span class="grow"><b>${h.name}</b></span>${num('hs')}</div></div>
+    <div class="formrow"><label class="field">Where the game stands<select id="rp-st" value=${f.st} onChange=${e=>setF({...f,st:e.target.value})}>${PERIODS(M.sport).map(p=>html`<option>${p}</option>`)}</select></label>
+      <label class="field">Your name<input id="rp-name" value=${f.name} onInput=${e=>setF({...f,name:e.target.value})}/></label></div>
+    <div class="row"><button class="btn pri" disabled=${!good||busy} onClick=${send}>${busy?'Sending…':'Send score'}</button></div>
+    <div class="note">Report only what is on the scoreboard. Scores from trusted sources show right away; everyone else's are checked first.</div><//>`;
+}
+
+/* ---------- Pick'em ---------- */
+async function scoreWeek(S,sport,w){
+  const wid=sport+':'+mondayOf(w.first),picks=await DB.list('picks',[['week','==',wid]]),G={},U={};w.games.forEach(g=>G[g.id]=g);
+  picks.forEach(p=>{const g=G[p.game];if(!g)return;const u=U[p.uid]=U[p.uid]||{uid:p.uid,name:p.name||'Fan',right:0,of:0};if(p.name)u.name=p.name;
+    if((p.at||0)>kickoff(g)+60000||!played(g)||g.hs===g.as)return;u.of++;if((g.hs>g.as?'home':'away')===p.pick)u.right++});
+  const by=(a,b)=>b.right-a.right||a.of-b.of||a.name.localeCompare(b.name),rows=Object.values(U).sort(by);
+  const done=w.games.filter(played).length,final=done===w.games.length&&rows.length>0,top=rows.length?rows[0].right:0;
+  await DB.set('boards',wid,{sport,week:wid,label:w.label,rows:rows.slice(0,300),players:rows.length,done,games:w.games.length,final,winners:final?rows.filter(r=>r.right===top).map(r=>r.name):[],at:Date.now()});
+  const T={};(await DB.list('boards',[['sport','==',sport]])).filter(b=>b.week).forEach(b=>b.rows.forEach(r=>{const t=T[r.uid]=T[r.uid]||{uid:r.uid,name:r.name,right:0,of:0};t.name=r.name;t.right+=r.right;t.of+=r.of}));
+  await DB.set('boards',sport+':season',{sport,rows:Object.values(T).sort(by).slice(0,300),at:Date.now()});
+  return{players:rows.length,final};
+}
+function Board({title,b,uid}){
+  if(!b||!b.rows||!b.rows.length)return null;const me=b.rows.findIndex(r=>r.uid===uid);
+  return html`<h3 class="eyebrow">${title}</h3><div class="list">${b.rows.slice(0,10).map((r,i)=>html`<div class="li" style=${r.uid===uid?'background:rgba(255,184,28,.08)':''}><span class="num" style="color:var(--muted);width:28px">${i+1}</span><span class="grow"><b>${r.name}</b></span><span class="pill">${r.right}<span style="font-size:13px;color:var(--muted)"> of ${r.of}</span></span></div>`)}
+    ${me>=10?html`<div class="li" style="background:rgba(255,184,28,.08)"><span class="num" style="color:var(--muted);width:28px">${me+1}</span><span class="grow"><b>${b.rows[me].name}</b> (you)</span><span class="pill">${b.rows[me].right}</span></div>`:null}</div>`;
+}
+function Pickem({S,sport}){
+  const M=useMemo(()=>model(S,sport,'v'),[S,sport]);const[wk,setWk]=useState(M.cur);const w=M.weeks[Math.min(wk,M.weeks.length-1)];
+  const wid=w?sport+':'+mondayOf(w.first):'';const[name,setName]=useState(myName());const[mine,setMine]=useState({});
+  const[b]=useLoad(()=>Promise.all([DB.get('boards',wid),DB.get('boards',sport+':season')]),[wid]);
+  useEffect(()=>{let on=true;setMine({});if(!wid)return;dbReady.then(()=>DB.list('picks',[['uid','==',DB.me.uid],['week','==',wid]])).then(r=>{if(!on)return;const o={};r.forEach(p=>o[p.game]=p.pick);setMine(o)}).catch(()=>{});return()=>{on=false}},[wid]);
+  if(!w)return html`<div class="slot"><strong>No games to pick</strong><span>There is no ${M.sp.name} schedule yet.</span></div>`;
+  const pick=async(g,side)=>{if(Date.now()>=kickoff(g))return;if(!name.trim()){SAY('Type a leaderboard name first.');const el=document.getElementById('pk-name');if(el)el.focus();return}
+    ls.set('pb_name',name.trim());setMine(m=>({...m,[g.id]:side}));
+    try{await dbReady;await DB.set('picks',g.id+'__'+DB.me.uid,{week:wid,game:g.id,pick:side,uid:DB.me.uid,name:name.trim().slice(0,24),at:DB.stamp()})}catch(e){console.warn(e);SAY('That pick did not save. Check your connection.')}};
+  const open=w.games.filter(g=>Date.now()<kickoff(g)&&!hasScore(g)),made=w.games.filter(g=>mine[g.id]).length;
+  const right=w.games.filter(g=>played(g)&&g.hs!==g.as&&mine[g.id]===(g.hs>g.as?'home':'away')).length,graded=w.games.filter(g=>played(g)&&mine[g.id]).length;
+  const wb=b&&b[0],sb=b&&b[1];
+  const side=(g,k)=>{const s=M.sideOf(g,k),lock=Date.now()>=kickoff(g)||hasScore(g),win=played(g)&&g.hs!==g.as&&(g.hs>g.as?'home':'away')===k;
+    return html`<button class="pkb" aria-pressed=${mine[g.id]===k} disabled=${lock} onClick=${()=>pick(g,k)}><${Logo} id=${s.id} name=${s.name} size=${36}/><span class="nm">${s.name}</span>${hasScore(g)?html`<span class="pill" style=${win?'':'color:var(--muted)'}>${s.score}</span>`:null}</button>`};
+  return html`<div class="chips scroll">${M.weeks.map((x,i)=>html`<button class="chip" aria-pressed=${M.weeks[wk]===x} onClick=${()=>setWk(i)}>${x.label}</button>`)}</div>
+    ${wb&&wb.final&&wb.winners.length?html`<div class="banner"><b>${w.label.split(' · ')[0]} winner${wb.winners.length>1?'s':''}: ${wb.winners.join(', ')}</b> with ${wb.rows[0].right} of ${wb.rows[0].of} right. ${wb.players} fans played.</div>`:null}
+    <label class="field">Your leaderboard name<input id="pk-name" value=${name} maxlength="24" onInput=${e=>setName(e.target.value)} placeholder="First name and last initial works"/></label>
+    <div class="note">${open.length?'Tap the team you think wins. You can change a pick until that game kicks off. ':'Every game this week has started. '}${made} of ${w.games.length} picked${graded?' · '+right+' of '+graded+' right so far':''}.</div>
+    <div class="grid">${w.games.map(g=>{const pl=played(g),ok=pl&&g.hs!==g.as&&mine[g.id]===(g.hs>g.as?'home':'away');
+      return html`<div class="card"><div class="meta"><span>${dshort(g.date)} · ${g.time||'TIME TBD'}</span><span class=${pl&&mine[g.id]?(ok?'ok':'no'):''}>${pl?(mine[g.id]?(ok?'YOU GOT IT':'MISSED'):'NO PICK'):g.inprog?'LIVE':Date.now()>=kickoff(g)?'LOCKED':'OPEN'}</span></div>
+        ${side(g,'away')}${side(g,'home')}</div>`})}</div>
+    <div class="spon">Weekly prize sponsor: open</div>
+    <${Board} title=${w.label.split(' · ')[0]+' leaderboard'} b=${wb} uid=${DB.me.uid}/>
+    <${Board} title="Season leaderboard" b=${sb} uid=${DB.me.uid}/>
+    ${wb?html`<div class="note">Leaderboard updated ${fmtStamp(new Date(wb.at).toISOString())||''}. Free to play. Ties share the win.</div>`:html`<div class="note">The leaderboard posts after this week's first final. Free to play.</div>`}`;
+}
+
+/* ---------- Player of the week ---------- */
+function Poll({M,poll}){
+  const day=todayISO(),[counts,setCounts]=useState(poll.result||null),[voted,setVoted]=useState(null);
+  const load=()=>dbReady.then(async()=>{const v=await DB.get('votes',poll.id+'__'+DB.me.uid+'__'+day);setVoted(v?v.nom:'');
+    if(!poll.result){const c={};await Promise.all(poll.noms.map(async n=>{c[n.id]=await DB.count('votes',[['poll','==',poll.id],['nom','==',n.id]])}));setCounts(c)}}).catch(e=>{console.warn(e);setVoted('')});
+  useEffect(()=>{load()},[poll.id]);
+  const vote=async n=>{if(voted||!poll.open)return;setVoted(n.id);try{await DB.set('votes',poll.id+'__'+DB.me.uid+'__'+day,{poll:poll.id,nom:n.id,uid:DB.me.uid,day,at:DB.stamp()});load()}catch(e){console.warn(e);setVoted('');SAY('Vote not counted. Check your connection.')}};
+  const tot=counts?Object.values(counts).reduce((a,b)=>a+b,0):0,show=counts&&(voted||!poll.open),best=counts?Math.max(0,...Object.values(counts)):0;
+  return html`<div class="between"><h2 class="eyebrow">${poll.title}</h2><button class="link" onClick=${()=>shareLink(poll.title,'Vote for '+poll.title+' on 208 Pressbox',SITE+'#vote')}>Share</button></div>
+    <div class="list">${poll.noms.map(n=>{const c=(counts||{})[n.id]||0,pct=tot?Math.round(100*c/tot):0,win=!poll.open&&tot>0&&c===best;
+      return html`<div class="li" style="flex-wrap:wrap"><${Logo} id=${n.team} name=${n.name} size=${40}/><span class="grow"><b>${n.name}</b>${win?html` <span class="tag" style="color:var(--accent);border-color:var(--accent)">Winner</span>`:null}<div class="sub">${(M.T[n.team]||{}).name||''}${n.line?' · '+n.line:''}</div></span>
+        ${show?html`<span class="pill">${pct}%</span>`:poll.open&&voted===''?html`<button class="btn sm pri" onClick=${()=>vote(n)}>Vote</button>`:null}
+        ${show?html`<div class="bar"><i style=${'width:'+pct+'%'+(voted===n.id||win?'':';background:var(--dash)')}></i></div>`:null}</div>`})}</div>
+    <div class="note">${!poll.open?'Voting is closed. '+tot+' votes.':voted?'Your vote is in for today. Come back tomorrow to vote again. '+tot+' votes so far.':'One vote per day until voting closes.'}</div>`;
+}
+
+/* ---------- Photos ---------- */
+async function shrink(file,max,q,cap){
+  const url=URL.createObjectURL(file),im=await loadImg(url);URL.revokeObjectURL(url);if(!im)throw new Error('not a picture');
+  const k=Math.min(1,max/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);
+  let out=c.toDataURL('image/jpeg',q);while(out.length>cap&&q>.3){q-=.1;out=c.toDataURL('image/jpeg',q)}
+  if(out.length>cap)throw new Error('too large');return{src:out,w:c.width,h:c.height};
+}
+function UploadSheet({M,team,onClose,onDone}){
+  const[f,setF]=useState({team:team||M.S.teams[0].id,cap:'',credit:ls.get('pb_credit')||myName(),ok:false});const[files,setFiles]=useState([]);const[busy,setBusy]=useState('');
+  const send=async()=>{if(!files.length||!f.ok||busy)return;let n=0,bad=0;
+    try{await dbReady;ls.set('pb_credit',f.credit.trim());const st=DB.me.trusted||DB.me.admin?'ok':'pending';
+      for(const file of files){setBusy('Sending '+(n+bad+1)+' of '+files.length+'…');
+        try{const big=await shrink(file,1400,.74,880000),th=await shrink(file,380,.62,60000),id=newId();
+          await DB.set('photoFull',id,{img:big.src,uid:DB.me.uid});
+          await DB.set('photos',id,{team:f.team,cap:f.cap.trim().slice(0,140),credit:f.credit.trim().slice(0,40),uid:DB.me.uid,status:st,thumb:th.src,w:big.w,h:big.h,at:DB.stamp()});n++}
+        catch(e){console.warn(e);bad++}}
+      SAY(n?(n+' photo'+(n>1?'s':'')+(st==='ok'?' added.':' sent. They show once approved.'))+(bad?' '+bad+' could not be read.':''):'Those files could not be read as pictures.');
+      if(n){onDone();onClose()}}catch(e){console.warn(e);SAY('Could not send. Check your connection.')}setBusy('')};
+  return html`<${Sheet} title="Add photos" onClose=${onClose}>
+    <label class="field">Pictures<input id="ph-files" type="file" accept="image/*" multiple onChange=${e=>setFiles([...e.target.files].slice(0,12))}/></label>
+    <div class="formrow"><label class="field">Team<select id="ph-team" value=${f.team} onChange=${e=>setF({...f,team:e.target.value})}>${M.S.teams.map(t=>html`<option value=${t.id}>${t.name}</option>`)}</select></label>
+      <label class="field">Photo credit<input id="ph-credit" value=${f.credit} onInput=${e=>setF({...f,credit:e.target.value})} placeholder="Photographer's name"/></label></div>
+    <label class="field">Caption (optional)<input id="ph-cap" value=${f.cap} maxlength="140" onInput=${e=>setF({...f,cap:e.target.value})} placeholder="Hillcrest vs Skyline, Oct 9"/></label>
+    <label class="row" style="align-items:flex-start;font-size:13.5px"><input id="ph-ok" type="checkbox" checked=${f.ok} onChange=${e=>setF({...f,ok:e.target.checked})} style="width:22px;height:22px;flex:none"/><span>I took these pictures or have the photographer's permission to share them here.</span></label>
+    <div class="row"><button class="btn pri" disabled=${!files.length||!f.ok||!f.credit.trim()||!!busy} onClick=${send}>${busy||'Add '+(files.length||'')+' photo'+(files.length===1?'':'s')}</button></div>
+    <div class="note">Up to 12 at a time. Pictures are made smaller before sending. A parent or player can ask for any photo to be taken down.</div><//>`;
+}
+function PhotoSheet({M,p,onClose,onDone}){
+  const[full]=useLoad(()=>DB.get('photoFull',p.id),[p.id]);const t=M.T[p.team];
+  const act=async(fn,msg)=>{try{await fn();SAY(msg);onDone();onClose()}catch(e){console.warn(e);SAY('That did not work. Try again.')}};
+  return html`<${Sheet} title=${t?t.name:'Photo'} onClose=${onClose}>
+    <img src=${full&&full.img||p.thumb} alt=${p.cap||'Team photo'} style=${'width:100%;border-radius:12px;aspect-ratio:'+p.w+'/'+p.h+';object-fit:cover;background:var(--card)'}/>
+    ${p.cap?html`<div>${p.cap}</div>`:null}<div class="note">Photo: ${p.credit||'not credited'}${p.status==='pending'?' · waiting for approval':''}</div>
+    <div class="row" style="flex-wrap:wrap">
+      ${DB.me.admin&&p.status!=='ok'?html`<button class="btn sm pri" onClick=${()=>act(()=>DB.set('photos',p.id,{status:'ok'},true),'Photo approved.')}>Approve</button>`:null}
+      ${DB.me.admin||DB.me.uid===p.uid?html`<button class="btn sm" onClick=${()=>act(async()=>{await DB.del('photos',p.id);await DB.del('photoFull',p.id)},'Photo removed.')}>Remove</button>`
+      :html`<button class="btn sm" onClick=${()=>act(()=>DB.add('flags',{photo:p.id,team:p.team,uid:DB.me.uid,at:DB.stamp()}),'Thanks. 208 Pressbox will take a look.')}>Ask to take this down</button>`}</div><//>`;
+}
+function Photos({M,team,favs,openSheet,ver}){
+  const[f,setF]=useState(team||'all');const tf=team||(f==='all'?null:f);
+  const[rows]=useLoad(()=>DB.list('photos',[['status','==','ok']].concat(tf?[['team','==',tf]]:[]),{limit:60}),[tf,ver]);
+  return html`${team?null:html`<div class="chips scroll"><button class="chip" aria-pressed=${f==='all'} onClick=${()=>setF('all')}>All teams</button>${favs.filter(id=>M.T[id]).map(id=>html`<button class="chip" aria-pressed=${f===id} onClick=${()=>setF(id)}>${M.T[id].name}</button>`)}</div>`}
+    <div><button class="btn pri" onClick=${()=>openSheet({k:'upload',team:tf})}>${Ico.camera} Add photos</button></div>
+    ${rows===null?html`<div class="note">Loading photos…</div>`:rows&&rows.length?html`<div class="pgrid">${rows.map(p=>html`<button class="ph" aria-label=${p.cap||'Photo'} onClick=${()=>openSheet({k:'photo',p})}><img src=${p.thumb} alt="" loading="lazy"/></button>`)}</div>`
+    :html`<div class="slot"><strong>No photos yet</strong><span>${tf?'Be the first to add '+M.T[tf].name+' photos.':'Game photos from parents and student photographers show up here.'}</span></div>`}`;
+}
+
+/* ---------- Playoffs ---------- */
+function Playoffs({M,go,openGame}){
+  const br=(M.S.brackets||[]).filter(b=>b.sport===M.sport),post=M.G.filter(g=>g.post);
+  const side=(s,o)=>html`<div class=${'trow'+(s.score!=null&&o.score!=null&&s.score<o.score?' lose':'')}>${s.seed?html`<span class="tag">${s.seed}</span>`:null}<${Logo} id=${s.id} name=${s.name||'TBD'} size=${28}/><span class="nm">${s.name||'To be decided'}</span>${s.score!=null?html`<span class="score" style="font-size:24px">${s.score}</span>`:null}</div>`;
+  return html`${br.map(b=>html`<h2 class="eyebrow">${b.title}</h2>${b.rounds.map(r=>html`<h3 class="note" style="margin:0;font-weight:600;letter-spacing:.8px;text-transform:uppercase">${r.name}</h3><div class="grid">${r.games.map(x=>html`<div class="card"><div class="meta"><span>${x.date?dshort(x.date):'DATE TBD'}${x.time?' · '+x.time:''}</span><span>${x.site||''}</span></div>${side(x.a,x.b)}${side(x.b,x.a)}</div>`)}</div>`)}${b.source?html`<div class="note">Bracket from ${b.source}.</div>`:null}`)}
+    ${br.length?null:html`<div class="slot"><strong>Brackets are not out yet</strong><span>The ${M.sp.name} state brackets show up here as soon as they are posted after the regular season. Every team in the bracket is listed, and games involving our ${M.S.teams.length} schools link to their team pages.</span></div>`}
+    ${post.length?html`<h2 class="eyebrow">Postseason games</h2><div class="grid">${post.map(g=>html`<${GameCard} M=${M} g=${g} go=${go} open=${openGame}/>`)}</div>`:null}`;
 }
 
 /* ---------- Admin ---------- */
