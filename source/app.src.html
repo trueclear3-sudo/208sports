@@ -394,7 +394,7 @@ function SearchSheet({M,go,onClose,setLevel,setSport}){
 function Home({M,favs,go,tab,setTab,openGame,openFavs,level,setLevel,setSport,openSheet,ver}){
   const[wk,setWk]=useState(M.cur);const[cat0,setCat]=useState('');const cats=catsFor(M,M.sport),cat=cats.some(c=>c[0]===cat0)?cat0:(cats[0]||[''])[0];
   const mine=useMemo(()=>{const out=[];favs.forEach(id=>{const gs=M.gamesOf(id);const last=[...gs].reverse().find(played);const next=gs.find(g=>!played(g)&&g.date>=todayISO());[last,next].forEach(g=>{if(g&&!out.includes(g))out.push(g)})});return out.sort((a,b)=>a.date<b.date?-1:1)},[M,favs]);
-  const leaders=M.S.teams.flatMap(t=>(((t.stats||{})[M.sport]||{})[cat]||[]).map(x=>({...x,t}))).sort((a,b)=>(SEED.statLow||[]).includes(cat)?a.v-b.v:b.v-a.v).slice(0,15);
+  const leaders=M.S.teams.flatMap(t=>(((t.stats||{})[M.sport]||{})[cat]||[]).map(x=>({...x,t}))).sort((a,b)=>((SEED.statLow||[]).includes(cat)||/Against Average/i.test(cat))?a.v-b.v:b.v-a.v).slice(0,15);
   const cinfo=cats.find(c=>c[0]===cat)||['','',''],polls=COMMUNITY?(M.S.polls||[]):[],poll=polls.find(x=>x.open)||polls[0];
   const TABS=[['teams','Teams'],['scores','Scores'],['standings','Standings'],['players','Players'],['playoffs','Playoffs']].concat(COMMUNITY?[['picks',"Pick'em"],['photos','Photos']]:[]);
   return html`
