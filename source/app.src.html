@@ -843,6 +843,7 @@ function App(){
   const[view,setView]=useState({v:'home'});const[homeTab,setHomeTab]=useState(()=>({'#vote':'players','#picks':'picks','#photos':'photos','#playoffs':'playoffs'})[location.hash]||'scores');
   const[sheet,setSheet]=useState(null);const[level,setLevel]=useState('v');const[sport,setSportRaw]=useState('football');
   const pref=useRef(patch),saveT=useRef(null),toastT=useRef(null);
+  const[adm,setAdm]=useState(SHOW_ADMIN);useEffect(()=>{const h=()=>{if(location.hash==='#admin')setAdm(true)};window.addEventListener('hashchange',h);return()=>window.removeEventListener('hashchange',h)},[]);
   const setPatch=p=>{pref.current=p;setPatchRaw(p);ls.set('pb_patch',JSON.stringify(p))};
   const S=useMemo(()=>applyPatch(SEED,patch,live),[patch,live]);
   useEffect(()=>{SAY=m=>{setToast(m);clearTimeout(toastT.current);toastT.current=setTimeout(()=>setToast(''),4200)};const off=[];
@@ -861,7 +862,7 @@ function App(){
   const sg=sheet&&sheet.id?S.games.find(g=>g.id===sheet.id):null,MG=sg?(sg.sport===sport&&(sg.level||'v')===level?M:model(S,sg.sport||'football',sg.level||'v')):M;
   return html`<div class="wrap">
     <header class="hdr"><button class="brand" onClick=${()=>go({v:'home'})} aria-label="208 Pressbox home"><img src=${BRAND.icon} alt=""/><b>208</b><span>PRESSBOX</span></button>
-      <div class="hdr-btns"><button class="icon" aria-label="Search" onClick=${()=>setSheet({k:'search'})}>${Ico.search}</button>${SHOW_ADMIN?html`<button class="icon" aria-label="Admin" onClick=${()=>go({v:'admin'})}>${Ico.gear}</button>`:null}</div></header>
+      <div class="hdr-btns"><button class="icon" aria-label="Search" onClick=${()=>setSheet({k:'search'})}>${Ico.search}</button>${adm?html`<button class="icon" aria-label="Admin" onClick=${()=>go({v:'admin'})}>${Ico.gear}</button>`:null}</div></header>
     ${view.v==='home'?html`<${Home} M=${M} favs=${favs} go=${go} tab=${homeTab} setTab=${setHomeTab} openGame=${openGame} openFavs=${()=>setSheet({k:'favs'})} level=${level} setLevel=${setLevel} setSport=${setSport} openSheet=${setSheet} ver=${ver}/>`:null}
     ${view.v==='team'&&M.T[view.id]?html`<${TeamPage} M=${M} id=${view.id} tab=${view.tab||'schedule'} setTab=${t=>setView({...view,tab:t})} favs=${favs} toggle=${toggle} go=${go} openGame=${openGame} openDonate=${t=>setSheet({k:'donate',id:t.id})} level=${level} setLevel=${setLevel} setSport=${setSport} openSheet=${setSheet} ver=${ver}/>`:null}
     ${view.v==='admin'?html`<${Admin} M=${M} update=${update} reset=${reset} go=${go} level=${level} setLevel=${setLevel} setSport=${setSport} me=${me} setMe=${setMe} openSheet=${setSheet} ver=${ver} bump=${bump}/>`:null}
