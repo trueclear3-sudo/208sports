@@ -126,6 +126,7 @@ tr.me td{background:rgba(255,184,28,.08)}
 .wk.past{color:var(--muted)}.wk[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
 .seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:6px}
 .seg .chip{padding:0 6px;text-align:center}
+.chip:disabled{opacity:.4;cursor:default}.chip.wkc{height:40px;padding:0 10px;font-size:13.5px}
 [data-look=score] .bbar{border-top:2px solid var(--fg)}[data-look=score] .bb{font-size:12.5px;letter-spacing:0;text-transform:uppercase}[data-look=score] .wk{border-radius:0;font-weight:400}
 [data-look=board] .bbar{background:#18221F;border-top:2px solid var(--fg);left:10px;right:10px;bottom:10px;max-width:1020px;font-size:14px}[data-look=board] .bb{font-size:14px;font-weight:400}
 [data-look=board] .wk{border-radius:0;border-width:2px;background:none}[data-look=board] .wk:not(.past){border-color:var(--fg)}[data-look=board] .wk[aria-pressed=true]{border-color:var(--accent);background:var(--accent);color:#1F2B27}
@@ -345,9 +346,11 @@ function Sports({M,setSport,all,edit}){
   return html`<div class="chips" role="group" aria-label="Sport">${M.S.sports.filter(x=>x.on&&(M.sport===x.id||!hid.includes(x.id))).map(x=>html`<button class="chip" aria-pressed=${M.sport===x.id} onClick=${()=>setSport(x.id)}>${x.name}</button>`)}${edit?html`<button class="chip" style="border-style:dashed;color:var(--muted)" onClick=${edit}>${hid.length?'+ '+hid.length+' hidden':'Edit sports'}</button>`:null}</div>`;
 }
 function WeekPick({weeks,wk,setWk,cur}){
-  const n=weeks.length,cols=n<=12?n:Math.ceil(n/Math.ceil(n/10)),w=weeks[wk]||weeks[0];if(!w)return null;const d=D(w.first);
-  return html`<div class="between"><span class="note">Week</span><span style="color:var(--accent);font-weight:600">Week ${wk+1} of ${n} · starts ${MON[d.getMonth()]} ${d.getDate()}</span></div>
-    <div class="wks" role="group" aria-label="Week" style=${'grid-template-columns:repeat('+cols+',minmax(0,1fr))'}>${weeks.map((x,i)=>html`<button class=${'wk'+(i<cur?' past':'')} aria-pressed=${wk===i} aria-label=${'Week '+(i+1)} onClick=${()=>setWk(i)}>${i+1}</button>`)}</div>`;
+  const n=weeks.length;if(!n)return null;const mode=wk<cur?'past':wk>cur?'next':'now';
+  const list=mode==='past'?weeks.slice(0,cur).map((x,i)=>[x,i]).reverse():mode==='next'?weeks.slice(cur+1).map((x,i)=>[x,cur+1+i]):[];
+  return html`<div class="seg" role="group" aria-label="Which games"><button class="chip" aria-pressed=${mode==='past'} disabled=${cur<1} onClick=${()=>setWk(cur-1)}>Past</button><button class="chip" aria-pressed=${mode==='now'} onClick=${()=>setWk(cur)}>This week</button><button class="chip" aria-pressed=${mode==='next'} disabled=${cur>=n-1} onClick=${()=>setWk(cur+1)}>Upcoming</button></div>
+    ${list.length>1?html`<div class="chips" role="group" aria-label=${mode==='past'?'Past weeks':'Upcoming weeks'}>${list.map(([x,i])=>html`<button class="chip wkc" aria-pressed=${wk===i} onClick=${()=>setWk(i)}>${x.label}</button>`)}</div>`:null}
+    <div class="note" style="color:var(--accent);font-weight:600">${weeks[wk].label.replace('Wk','Week')} · ${weeks[wk].games.length} game${weeks[wk].games.length===1?'':'s'}</div>`;
 }
 const BAR=[['scores','Scores',html`<rect x="3" y="5" width="18" height="14" rx="1"/><path d="M12 5v14M7 10v4M17 10v4"/>`],['teams','Teams',html`<path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6z"/>`],['standings','Standings',html`<path d="M5 20V10M12 20V4M19 20v-7"/>`],
   ['playoffs','Playoffs',html`<path d="M7 4h10v5a5 5 0 0 1-10 0zM12 14v4M8 20h8M7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3"/>`],['fans','Fans',html`<circle cx="9" cy="9" r="3.2"/><circle cx="17" cy="10" r="2.4"/><path d="M3 19c0-3 3-5 6-5s6 2 6 5M15 15c3-.5 6 1 6 4"/>`]];
