@@ -1,0 +1,31 @@
+PASS | connected to Firebase with anonymous sign-in | engine fire, signed in true, admin false, trusted false
+PASS | read shared admin edits | expected ok, got ok | "empty"
+PASS | read live scores | expected ok, got ok | "empty"
+PASS | fan cannot change admin edits | expected denied, got denied | permission-denied Missing or insufficient permissions.
+PASS | untrusted fan cannot post a live score | expected denied, got denied | permission-denied Missing or insufficient permissions.
+PASS | fan cannot pass the admin check | expected denied, got denied | permission-denied Missing or insufficient permissions.
+PASS | send a score report | expected ok, got ok | "82086007853897md5"
+PASS | fan cannot read other reports | expected denied, got denied | permission-denied Missing or insufficient permissions.
+PASS | apply to be trusted | expected ok, got ok | 
+PASS | read my own application | expected ok, got ok | "new"
+PASS | fan cannot approve themselves | expected denied, got denied | permission-denied Missing or insufficient permissions.
+PASS | check my trusted status | expected ok, got ok | "no"
+PASS | save a pick | expected ok, got ok | 
+PASS | read my picks | expected ok, got ok | "1 pick, time stamped number"
+PASS | cannot save a pick with a made-up time | expected denied, got denied | permission-denied Missing or insufficient permissions.
+PASS | cannot read everyone's picks | expected denied, got denied | permission-denied Missing or insufficient permissions.
+PASS | cast a vote | expected ok, got ok | 
+PASS | count votes | expected ok, got ok | 1
+PASS | cannot change a vote | expected denied, got denied | permission-denied Missing or insufficient permissions.
+PASS | send a photo for approval | expected ok, got ok | 
+PASS | fan cannot publish their own photo | expected denied, got denied | permission-denied Missing or insufficient permissions.
+PASS | list approved photos | expected ok, got ok | 0
+PASS | open a full photo | expected ok, got ok | 2023
+PASS | remove my own photo | expected ok, got ok | 
+PASS | count a visit | expected ok, got ok | 
+PASS | count a team page view | expected ok, got ok | 
+PASS | fan cannot read reach numbers | expected denied, got denied | permission-denied Missing or insufficient permissions.
+PASS | read a leaderboard | expected ok, got ok | "empty"
+TABS ['Teams', 'Scores', 'Standings', 'Players', 'Playoffs', "Pick'em", 'Photos']
+CONSOLE []
+SUMMARY 28 passed, 0 failed
