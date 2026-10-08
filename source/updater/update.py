@@ -54,11 +54,13 @@ def parse_page(page):
     pp = json.loads(m.group(1))["props"]["pageProps"]
     contests = pp.get("contests")
     if contests is None: raise ValueError("page has no game list")
-    rows = []
+    rows, colors = [], None
     for r in contests:
         if len(r) < 39: raise ValueError("game record has %d fields, expected 39 or more" % len(r))
         if r[3]: continue
         me, op = r[37], r[38]
+        if not colors and me and len(me) > 23 and all(isinstance(c, str) and re.fullmatch(r"[0-9A-Fa-f]{6}", c or "") for c in me[22:24]):
+            colors = [me[22].upper(), me[23].upper()]      # the school's two colors, e.g. Bonneville 00824B / C8880A
         if not me or not op or not op[14] or not r[11]: continue
         played = bool(r[4]) and isinstance(me[6], int) and isinstance(op[6], int)
         note = re.search(r"\(([^)]*)\)", me[3] or "")
@@ -68,7 +70,7 @@ def parse_page(page):
                          type=me[12], note=note.group(1) if note else ""))
     sd = (pp.get("teamContext") or {}).get("standingsData") or {}
     stated = dict(overall=(sd.get("overallStanding") or {}).get("overallWinLossTies"),
-                  conf=(sd.get("leagueStanding") or {}).get("conferenceWinLossTies"))
+                  conf=(sd.get("leagueStanding") or {}).get("conferenceWinLossTies"), colors=colors)
     return rows, stated
 
 def parse_roster(page):
@@ -321,7 +323,9 @@ def main():
                     if k not in stat_low: stat_low.append(k)
             elif r and not r["ok"] and old.get("stats", {}).get(sp["id"]):      # a failed page keeps the stats the app had
                 stats[sp["id"]] = old["stats"][sp["id"]]
-        teams.append(dict(id=t["id"], name=t["name"], mascot=t["mascot"], conf=t["conf"],
+        colors = t.get("colors") or next((v["stated"]["colors"] for k, v in pulled.items()
+                                          if k.endswith("|" + t["id"]) and not k.startswith(("roster|", "stats|")) and v.get("ok") and (v.get("stated") or {}).get("colors")), None) or old.get("colors")
+        teams.append(dict(id=t["id"], name=t["name"], mascot=t["mascot"], conf=t["conf"], colors=colors,
                           links={s["id"]: t["base"] + s["paths"]["v"] for s in CFG["sports"]},
                           rosters=rosters, rosterNote=note, stats=stats, favBiz=[]))
     sports = [dict(id=s["id"], name=s["name"], on=s.get("on", True), levels=s["levels"]) for s in CFG["sports"]]

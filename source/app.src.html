@@ -113,6 +113,14 @@ tr.me td{background:rgba(255,184,28,.08)}
 .pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:6px}
 .ph{padding:0;border:0;background:var(--card);aspect-ratio:1;border-radius:8px;overflow:hidden}.ph img{width:100%;height:100%;object-fit:cover;display:block}
 .sheet>*{flex-shrink:0}
+.hdr{position:sticky;top:0;z-index:4;background:var(--bg)}
+.tband{margin:0 -16px;padding:10px 16px}
+.tback{display:flex;align-items:center;gap:8px;background:none;border:0;color:inherit;font-family:var(--disp);font-weight:700;font-size:21px;letter-spacing:.3px;min-height:44px;padding:0;min-width:0;text-align:left;line-height:1.05}
+.tback span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tband .icon{background:rgba(0,0,0,.18);border-color:rgba(255,255,255,.35);color:inherit}
+.ctx{font-size:12.5px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--muted);padding:2px 0 4px}.ctx span{color:var(--chalk)}
+.tpage .hero{border-left:6px solid var(--accent);padding-left:12px}
+
 .gd{width:70px;flex:none;display:flex;flex-direction:column;gap:2px;font-size:11.5px;letter-spacing:.6px;color:var(--muted)}.gd b{color:var(--fg);font-size:12.5px}
 .gr{display:flex;align-items:center;gap:8px;font-weight:600;font-size:15px;min-height:28px}.gr .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .gr b{font-family:var(--disp);font-size:20px;color:var(--chalk)}.gr.lose{color:var(--muted);font-weight:500}.gr.lose b{color:var(--muted)}
@@ -168,7 +176,7 @@ input[type=file]{padding:8px}
 [data-look=score] .meta{font-size:14px;letter-spacing:1.5px}[data-look=score] .meta span:last-child{background:var(--fg);color:var(--bg);padding:1px 8px}[data-look=score] .meta .up{background:var(--accent)}[data-look=score] .meta .live{background:var(--bad)}
 [data-look=score] .chip[aria-pressed=true]{color:#0A0A0B}[data-look=score] .chip,[data-look=score] .btn{font-weight:600;font-size:16px;text-transform:uppercase;letter-spacing:.8px}
 /* Look C: coach's chalkboard. Slate board in a wood frame, hand-drawn boxes, handwriting. */
-[data-look=board]{--bg:#1F2B27;--card:transparent;--line:#7C8A84;--dash:#7C8A84;--fg:#EEF0E8;--muted:#A9B5AF;--accent:#F2D15C;--chalk:#EEF0E8;--body:'Patrick Hand','Chalkboard SE',cursive}
+[data-look=board]{--on-accent:#1F2B27;--bg:#1F2B27;--card:transparent;--line:#7C8A84;--dash:#7C8A84;--fg:#EEF0E8;--muted:#A9B5AF;--accent:#F2D15C;--chalk:#EEF0E8;--body:'Patrick Hand','Chalkboard SE',cursive}
 [data-look=board] body{background:#6B4A2B;font-size:18px}
 [data-look=board] .wrap{background:var(--bg);margin:10px auto;min-height:calc(100vh - 20px);max-width:1020px}
 @media(max-width:1060px){[data-look=board] .wrap{margin:10px}}
@@ -181,7 +189,7 @@ input[type=file]{padding:8px}
 [data-look=board] .meta{font-size:15px;font-weight:400;letter-spacing:.3px;text-transform:none}
 [data-look=board] .sheet{background:var(--bg);border:2px solid var(--fg)}[data-look=board] .field input,[data-look=board] .field select,[data-look=board] .in{background:#18221F}
 [data-look=board] .chip,[data-look=board] .btn,[data-look=board] .note,[data-look=board] .li .sub{font-size:16px}
-[data-look=board] .btn.pri,[data-look=board] .chip[aria-pressed=true]{color:#1F2B27}
+[data-look=board] .btn.pri,[data-look=board] .chip[aria-pressed=true]{color:var(--on-accent)}
 [data-look=board] .logo{background:#fff}
 </style>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="chalkfx" x="-5%" y="-10%" width="110%" height="120%"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" seed="4" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2" result="d"/><feColorMatrix in="n" type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 -1.5 1.75" result="s"/><feComposite in="d" in2="s" operator="in"/></filter></svg>
@@ -330,6 +338,15 @@ function teamNumbers(M,id){const gs=M.gamesOf(id).filter(played);if(!gs.length)r
   gs.forEach(g=>{const home=g.home===id,mine=home?g.hs:g.as,th=home?g.as:g.hs;pf+=mine;pa+=th;if(mine>th){home?hw++:aw++;run=run>0?run+1:1;if(!best||mine-th>best.d)best={d:mine-th,g,mine,th}}else if(mine<th){home?hl++:al++;run=run<0?run-1:-1}else run=0});
   const per=n=>(Math.round(10*n/gs.length)/10).toFixed(1);
   return{n:gs.length,pf:per(pf),pa:per(pa),home:hw+'-'+hl,away:aw+'-'+al,streak:run>0?'Won '+run:run<0?'Lost '+(-run):'None',best};}
+// School colors (from each school's MaxPreps page) theme a team's own pages so it is obvious you are looking at one school.
+const hexRGB=h=>[0,2,4].map(i=>parseInt(h.slice(i,i+2),16));
+const lum=h=>{const c=hexRGB(h).map(v=>{v/=255;return v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4)});return .2126*c[0]+.7152*c[1]+.0722*c[2]};
+function teamTheme(t){
+  const cs=((t&&t.colors)||[]).filter(x=>/^[0-9A-F]{6}$/i.test(x));if(!cs.length)return null;
+  let band=cs[0],other=cs[1]||cs[0];if(lum(band)>.45&&cs[1]&&lum(cs[1])<lum(band)){band=cs[1];other=cs[0]}
+  const acc=lum(other)>.1&&other!==band?other:lum(band)>.1?band:'F4F1E8';
+  return{band:'#'+band,ink:lum(band)>.4?'#111':'#fff',acc:'#'+acc,onAcc:lum(acc)>.4?'#111':'#fff'};
+}
 const loadHidden=()=>{const h=ls.json('pb_hide_sports');return Array.isArray(h)?h:[]};
 const status=g=>g.inprog?{t:'LIVE · '+g.live.st,up:true,live:true}:played(g)?{t:(NOTE[g.note]||(g.note?'FINAL/'+g.note:'FINAL'))+' · '+dshort(g.date),up:false}:g.date<todayISO()?{t:dshort(g.date)+' · SCORE NOT POSTED',up:false}:{t:dshort(g.date)+' · '+(g.time||'TIME TBD'),up:true};
 function sponsorLine(M,g){
@@ -489,7 +506,6 @@ function TeamPage({M,id,tab,setTab,favs,toggle,go,openGame,openDonate,level,setL
   useEffect(()=>{track('team',id)},[id]);if(tab==='sponsors')biz.forEach(b=>track('sponsorSeen',b.id,true));
   const skey=level==='v'?M.sport:M.sport+'-'+level,fstats=(t.stats||{})[skey]||{},tcats=catsFor(M,skey).filter(c=>(fstats[c[0]]||[]).length),hasStats=tcats.length>0,tn=teamNumbers(M,id),roster=((t.rosters[M.sport]||{})[level])||[];
   return html`
-  <button class="back" onClick=${()=>go({v:'home'})}>${Ico.back} All teams</button>
   <div class="hero"><${Logo} id=${id} size=${84}/><div><h1>${t.name} ${t.mascot}</h1><p>${M.sp.name}${level==='v'?'':' '+LV[level]} · ${r.all} overall · ${r.cf} ${t.conf}</p></div></div>
   <div class="row" style="flex-wrap:wrap;padding:10px 0 16px"><button class="btn pri" onClick=${()=>openDonate(t)}>${Ico.heart} Donate</button><button class="btn" aria-pressed=${fav} onClick=${()=>toggle(id)}>${fav?'Following':'Follow'}</button></div>
   <div style="padding-bottom:14px;display:flex;flex-direction:column;gap:8px"><${Sports} M=${M} setSport=${setSport}/><${Levels} level=${level} setLevel=${setLevel} M=${M}/></div>
@@ -1004,12 +1020,15 @@ function App(){
   const toggle=id=>setFavs(f=>{const n=f.includes(id)?f.filter(x=>x!==id):f.concat(id);ls.set(FAVKEY,JSON.stringify(n));return n});
   const go=v=>{setView(v);try{window.scrollTo(0,0)}catch(e){}};
   const openGame=g=>setSheet({k:'game',id:g.id}),close=()=>setSheet(null),bump=()=>setVer(v=>v+1);
+  const tv=view.v==='team'?M.T[view.id]:null,th=teamTheme(tv);
   const sg=sheet&&sheet.id?S.games.find(g=>g.id===sheet.id):null,MG=sg?(sg.sport===sport&&(sg.level||'v')===level?M:Object.assign(model(S,sg.sport||'football',sg.level||'v'),{picks})):M;
   return html`<div class="wrap">
-    <header class="hdr"><button class="brand" onClick=${()=>go({v:'home'})} aria-label="208 Pressbox home"><img src=${BRAND.icon} alt=""/><b>208</b><span>PRESSBOX</span></button>
+    <header class=${'hdr'+(tv?' tband':'')} style=${tv?'background:'+(th?th.band:'var(--bg)')+';color:'+(th?th.ink:'var(--fg)'):''}>${tv?html`<button class="tback" onClick=${()=>go({v:'home'})} aria-label="Back to all schools">${Ico.back}<${Logo} id=${tv.id} size=${34}/><span>${tv.name} ${tv.mascot}</span></button>`
+    :html`<button class="brand" onClick=${()=>go({v:'home'})} aria-label="208 Pressbox home"><img src=${BRAND.icon} alt=""/><b>208</b><span>PRESSBOX</span></button>`}
       <div class="hdr-btns"><button class="icon" aria-label="Search" onClick=${()=>setSheet({k:'search'})}>${Ico.search}</button>${adm?html`<button class="icon" aria-label="Admin" onClick=${()=>go({v:'admin'})}>${Ico.gear}</button>`:null}</div></header>
     ${view.v==='home'?html`<${Home} M=${M} favs=${favs} go=${go} tab=${homeTab} setTab=${setHomeTab} openGame=${openGame} openFavs=${()=>setSheet({k:'favs'})} level=${level} setLevel=${setLevel} setSport=${setSport} openSheet=${setSheet} ver=${ver}/>`:null}
-    ${view.v==='team'&&M.T[view.id]?html`<${TeamPage} M=${M} id=${view.id} tab=${view.tab||'schedule'} setTab=${t=>setView({...view,tab:t})} favs=${favs} toggle=${toggle} go=${go} openGame=${openGame} openDonate=${t=>setSheet({k:'donate',id:t.id})} level=${level} setLevel=${setLevel} setSport=${setSport} openSheet=${setSheet} ver=${ver}/>`:null}
+    ${view.v==='home'?html`<div class="ctx"><span>All schools</span> · ${M.sp.name}${M.level==='v'?'':' · '+LV[M.level]}</div>`:null}
+    ${view.v==='team'&&M.T[view.id]?html`<div class="tpage" style=${th?'--accent:'+th.acc+';--on-accent:'+th.onAcc:''}><${TeamPage} M=${M} id=${view.id} tab=${view.tab||'schedule'} setTab=${t=>setView({...view,tab:t})} favs=${favs} toggle=${toggle} go=${go} openGame=${openGame} openDonate=${t=>setSheet({k:'donate',id:t.id})} level=${level} setLevel=${setLevel} setSport=${setSport} openSheet=${setSheet} ver=${ver}/></div>`:null}
     ${view.v==='admin'?html`<${Admin} M=${M} update=${update} reset=${reset} go=${go} level=${level} setLevel=${setLevel} setSport=${setSport} me=${me} setMe=${setMe} openSheet=${setSheet} ver=${ver} bump=${bump}/>`:null}
     ${view.v==='home'?html`<div class="note" style="padding-top:8px"><button class="link" style="min-height:44px;font-size:13px" onClick=${()=>setSheet({k:'install'})}>Add 208 Pressbox to your home screen</button> · <button class="link" style="min-height:44px;font-size:13px" onClick=${()=>setSheet({k:'guide',start:2})}>How it works</button></div>`:null}
     ${sheet&&sheet.k==='game'&&sg?html`<${GameSheet} M=${MG} g=${sg} go=${go} onClose=${close} openSheet=${setSheet}/>`:null}
