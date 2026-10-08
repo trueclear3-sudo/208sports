@@ -364,7 +364,7 @@ function WeekPick({weeks,wk,setWk,cur}){
     <div class="note" style="color:var(--accent);font-weight:600">${weeks[wk].label.replace('Wk','Week')} · ${weeks[wk].games.length} game${weeks[wk].games.length===1?'':'s'}</div>`;
 }
 const BAR=[['scores','Scores',html`<rect x="3" y="5" width="18" height="14" rx="1"/><path d="M12 5v14M7 10v4M17 10v4"/>`],['teams','Teams',html`<path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6z"/>`],['standings','Standings',html`<path d="M5 20V10M12 20V4M19 20v-7"/>`],
-  ['playoffs','Playoffs',html`<path d="M7 4h10v5a5 5 0 0 1-10 0zM12 14v4M8 20h8M7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3"/>`],['picks',"Pick'em",html`<path d="M4 6h10M4 12h10M4 18h10"/><path d="M17 5l1.5 1.5L21 4M17 11l1.5 1.5L21 10M17 17l1.5 1.5L21 16"/>`],['fans','Fans',html`<circle cx="9" cy="9" r="3.2"/><circle cx="17" cy="10" r="2.4"/><path d="M3 19c0-3 3-5 6-5s6 2 6 5M15 15c3-.5 6 1 6 4"/>`]];
+  ['schedule','Schedule',html`<rect x="3.5" y="5" width="17" height="15" rx="1.5"/><path d="M3.5 10h17M8 3v4M16 3v4M7.5 14h2M11 14h2M14.5 14h2M7.5 17h2M11 17h2"/>`],['picks',"Pick'em",html`<path d="M4 6h10M4 12h10M4 18h10"/><path d="M17 5l1.5 1.5L21 4M17 11l1.5 1.5L21 10M17 17l1.5 1.5L21 16"/>`],['fans','Fans',html`<circle cx="9" cy="9" r="3.2"/><circle cx="17" cy="10" r="2.4"/><path d="M3 19c0-3 3-5 6-5s6 2 6 5M15 15c3-.5 6 1 6 4"/>`]];
 const FAN=['players','photos'];
 function BottomBar({tab,pick}){
   const on=k=>k==='fans'?FAN.includes(tab):tab===k;
@@ -451,15 +451,16 @@ function Home({M,favs,go,tab,setTab,openGame,openFavs,level,setLevel,setSport,op
   ${tab==='scores'?html`
     <section class="sec" style="padding-top:0"><h2 class="eyebrow">My teams' scores</h2>
       ${mine.length?html`<div class="grid">${mine.map(g=>html`<${GameCard} M=${M} g=${g} go=${go} open=${openGame}/>`)}</div>`:html`<div class="slot"><strong>No teams followed yet</strong><span>Follow a team and its latest score and next game show up here.</span><div><button class="btn pri" onClick=${openFavs}>Pick my teams</button></div></div>`}</section>
-    <section class="sec"><h2 class="eyebrow">All games</h2>
+`:null}
+  ${tab==='schedule'?html`${(M.S.brackets||[]).some(b=>b.sport===M.sport)?html`<section class="sec" style="padding-top:0"><${Playoffs} M=${M} go=${go} openGame=${openGame} inSchedule=${true}/></section>`:null}
+    <section class="sec" style="padding-top:0"><h2 class="eyebrow">${M.sp.name}${M.level==='v'?'':' '+LV[M.level]} schedule</h2>
       <${WeekPick} weeks=${M.weeks} wk=${Math.min(wk,M.weeks.length-1)} setWk=${setWk} cur=${M.cur}/>
-      <div class="grid">${(M.weeks[Math.min(wk,M.weeks.length-1)]||{games:[]}).games.map(g=>html`<${GameCard} M=${M} g=${g} go=${go} open=${openGame}/>`)}</div></section>`:null}
-  ${tab==='scores'&&fmtStamp(SEED.pulled)?html`<div class="note">Scores from MaxPreps, last updated ${fmtStamp(SEED.pulled)}.</div>`:null}
+      ${M.weeks.length?html`<div class="grid">${(M.weeks[Math.min(wk,M.weeks.length-1)]||{games:[]}).games.map(g=>html`<${GameCard} M=${M} g=${g} go=${go} open=${openGame}/>`)}</div>`:html`<div class="slot"><strong>No schedule yet</strong><span>No ${M.sp.name} games have been posted yet.</span></div>`}</section>`:null}
+  ${(tab==='scores'||tab==='schedule')&&fmtStamp(SEED.pulled)?html`<div class="note">Scores from MaxPreps, last updated ${fmtStamp(SEED.pulled)}.</div>`:null}
   ${tab==='teams'?Object.keys(M.confs).sort().map(c=>html`<section class="sec" style="padding-top:0"><h2 class="eyebrow">${c}</h2><div class="teamgrid">${M.confs[c].map(t=>{const r=M.rec(t.id);return html`<button class="tg" onClick=${()=>go({v:'team',id:t.id})}><${Logo} id=${t.id} size=${64}/><span>${t.name}</span><small>${r.all}</small></button>`})}</div></section>`):null}
   ${tab==='standings'?html`<section class="sec" style="padding-top:0">${Object.keys(M.confs).sort().map(c=>html`<${Standings} M=${M} conf=${c} go=${go}/>`)}<div class="note">${M.soccer?'Calculated from the scores in the app and ranked by points: 3 for a win, 1 for a tie. Games after the regular season are not counted as conference games. Some conference opponents are not in the app yet.':!M.fb?'Calculated from the scores in the app, so they can lag behind until scores are posted.':level==='v'?'Calculated from the scores in the app. Twin Falls plays in the 5A Great Basin; its other conference opponents are not in the app yet.':'There are no official '+LV[level]+' standings. These records come from the scores posted so far, so they can lag behind.'}</div></section>`:null}
   ${tab==='players'&&poll?html`<section class="sec" style="padding-top:0"><${Poll} key=${poll.id} M=${M} poll=${poll}/></section>`:null}
   ${tab==='players'&&!cats.length?html`<section class="sec" style="padding-top:0"><div class="slot"><strong>No ${M.sp.name} stats yet</strong><span>Player stats for ${M.sp.name} have not been loaded.</span></div></section>`:null}
-  ${tab==='playoffs'?html`<section class="sec" style="padding-top:0"><${Playoffs} M=${M} go=${go} openGame=${openGame}/></section>`:null}
   ${tab==='picks'?html`<section class="sec" style="padding-top:0"><${Pickem} key=${M.sport} S=${M.S} sport=${M.sport}/></section>`:null}
   ${tab==='photos'?html`<section class="sec" style="padding-top:0"><${Photos} M=${M} favs=${favs} openSheet=${openSheet} ver=${ver}/></section>`:null}
   ${tab==='players'&&cats.length?html`<section class="sec" style="padding-top:0"><h2 class="eyebrow">Area leaders · Varsity ${M.sp.name}</h2>
@@ -604,7 +605,7 @@ function InstallSheet({onClose}){
   return html`<${Sheet} title="Add to home screen" onClose=${onClose}>
     <div class="note">208 Pressbox works like an app once it is on your home screen: one tap to open, full screen, no app store.</div><${InstallSteps} after=${onClose}/><//>`;
 }
-const HIGHLIGHTS=[['Scores and schedules','Every sport, Varsity to Freshman. Use the bar at the bottom to get around.'],['Tap any game','Get a recap, share the score, or report it from the stands.']]
+const HIGHLIGHTS=[['Scores and schedules','Scores for your teams up front. Full schedules and playoff brackets are under Schedule.'],['Tap any game','Get a recap, share the score, or report it from the stands.']]
   .concat(COMMUNITY?[["Play Pick'em",'Pick the winners each week and climb the leaderboard.'],['Vote and add photos','Player of the Week and game photos are under Fans.']]:[]);
 /* First open: 1) add to home screen, 2) pick teams, 3) a few highlights. Opened from the home screen it starts at step 2,
    so nobody picks teams in the browser and then again in the installed app. */
@@ -783,11 +784,11 @@ function Bracket({M,b,go}){
   return html`<div class="bk" style=${'grid-template-columns:repeat('+R.length+',minmax(0,1fr))'}>${R.map((r,i)=>html`<div class="br"><div class="bh">${r.name}</div>
     <div class=${'bc'+(i>0&&linked(i-1)?' fed':'')}>${linked(i)?pairs(r.games).map(p=>html`<div class="bp">${p.map(match)}</div>`):r.games.map(match)}</div></div>`)}</div>`;
 }
-function Playoffs({M,go,openGame}){
+function Playoffs({M,go,openGame,inSchedule}){
   const br=(M.S.brackets||[]).filter(b=>b.sport===M.sport),post=M.G.filter(g=>g.post);
-  return html`${br.map(b=>html`<h2 class="eyebrow">${b.title}</h2><${Bracket} M=${M} b=${b} go=${go}/>${b.source?html`<div class="note">Bracket from ${b.source}.</div>`:null}`)}
-    ${br.length?null:html`<div class="slot"><strong>Brackets are not out yet</strong><span>The ${M.sp.name} brackets show up here as soon as they are posted after the regular season. Every team in the bracket is listed.</span></div>`}
-    ${post.length?html`<h2 class="eyebrow">Postseason games</h2><div class="grid">${post.map(g=>html`<${GameCard} M=${M} g=${g} go=${go} open=${openGame}/>`)}</div>`:null}`;
+  return html`${br.map(b=>html`<h2 class="eyebrow">${inSchedule?'Playoffs · ':''}${b.title}</h2><${Bracket} M=${M} b=${b} go=${go}/>${b.source?html`<div class="note">Bracket from ${b.source}.</div>`:null}`)}
+    ${br.length||inSchedule?null:html`<div class="slot"><strong>Brackets are not out yet</strong><span>The ${M.sp.name} brackets show up here as soon as they are posted after the regular season. Every team in the bracket is listed.</span></div>`}
+    ${post.length&&!inSchedule?html`<h2 class="eyebrow">Postseason games</h2><div class="grid">${post.map(g=>html`<${GameCard} M=${M} g=${g} go=${go} open=${openGame}/>`)}</div>`:null}`;
 }
 
 /* ---------- Admin ---------- */
@@ -967,7 +968,7 @@ function migrateOld(){ // carry over edits made before the shared database exist
 function App(){
   const[patch,setPatchRaw]=useState(()=>ls.json('pb_patch')||migrateOld());const[live,setLive]=useState(null);
   const[me,setMe]=useState({...DB.me});const[ver,setVer]=useState(0);const[toast,setToast]=useState('');const[favs,setFavs]=useState(loadFavs);
-  const[view,setView]=useState({v:'home'});const[homeTab,setHomeTab]=useState(()=>({'#vote':'players','#picks':'picks','#photos':'photos','#playoffs':'playoffs'})[location.hash]||'scores');
+  const[view,setView]=useState({v:'home'});const[homeTab,setHomeTab]=useState(()=>({'#vote':'players','#picks':'picks','#photos':'photos','#playoffs':'schedule','#schedule':'schedule'})[location.hash]||'scores');
   const[sheet,setSheet]=useState(null);const[level,setLevel]=useState('v');const[sport,setSportRaw]=useState(()=>{const h=loadHidden(),f=SEED.sports.find(x=>x.on&&!h.includes(x.id));return f?f.id:'football'});
   const pref=useRef(patch),saveT=useRef(null),toastT=useRef(null);
   const[picks,setPicks]=useState({});const[hidden,setHidden]=useState(loadHidden);
