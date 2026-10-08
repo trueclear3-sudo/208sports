@@ -113,13 +113,24 @@ tr.me td{background:rgba(255,184,28,.08)}
 .pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:6px}
 .ph{padding:0;border:0;background:var(--card);aspect-ratio:1;border-radius:8px;overflow:hidden}.ph img{width:100%;height:100%;object-fit:cover;display:block}
 .sheet>*{flex-shrink:0}
+.bk{display:grid;gap:13px;align-items:stretch}
+.br{display:flex;flex-direction:column;min-width:0}
+.bh{font-size:11px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);text-align:center;padding-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bc,.bp{flex:1;display:flex;flex-direction:column;justify-content:space-around;gap:8px;position:relative}
+.bp::after{content:'';position:absolute;right:-8px;top:25%;bottom:25%;width:7px;border:2px solid var(--dash);border-left:0}
+.bm{border:1px solid var(--line);border-radius:8px;padding:4px 6px;background:var(--card);min-width:0;position:relative}
+.bc.fed .bm::before{content:'';position:absolute;left:-7px;top:50%;width:6px;border-top:2px solid var(--dash)}
+.bs{display:flex;gap:4px;align-items:center;font-family:'Barlow Condensed','Arial Narrow',sans-serif;font-size:15px;font-weight:600;min-height:24px}.bs .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bs i{font-style:normal;font-size:10.5px;color:var(--muted);width:11px;flex:none}.bs b{font-family:var(--disp);font-size:16px;color:var(--chalk)}.bs.lose{color:var(--muted);font-weight:500}.bs.lose b{color:var(--muted)}
+.bd{font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+[data-look=board] .bm{border-width:2px;border-color:var(--fg);border-radius:0}[data-look=board] .bs:not(.lose) b{color:var(--accent)}[data-look=score] .bm{border-radius:0}[data-look=score] .bs:not(.lose) b{color:var(--accent)}
 .chips.scroll{flex-wrap:wrap;overflow:visible;padding-bottom:0}
 .tabs.fit{grid-auto-flow:row;grid-template-columns:repeat(3,minmax(0,1fr));overflow:visible;border-bottom:0}
 .tabs.fit .tab{border:0;border-bottom:1px solid var(--line);padding:0 4px;font-size:15px;height:46px;white-space:normal}
 .tabs.fit .tab[aria-current=page]{border-bottom:3px solid var(--accent)}
 .wrap{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))}
 .bbar{position:fixed;left:0;right:0;bottom:0;z-index:5;background:var(--bg);border-top:1px solid var(--line);display:grid;grid-auto-flow:column;grid-auto-columns:1fr;max-width:1040px;margin:0 auto;padding:6px 4px calc(8px + env(safe-area-inset-bottom,0px))}
-.bb{background:none;border:0;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:2px;font-size:12.5px;font-weight:600;min-height:52px;padding:2px 0}
+.bb{background:none;border:0;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0;font-size:12px;font-weight:600;min-height:52px;padding:2px 0}
 .bb[aria-current=page]{color:var(--accent)}
 .wks{display:grid;gap:4px}
 .wk{height:44px;padding:0;border:1px solid var(--line);background:var(--card);font-family:var(--disp);font-weight:700;font-size:17px;border-radius:8px;color:var(--fg)}
@@ -127,8 +138,8 @@ tr.me td{background:rgba(255,184,28,.08)}
 .seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:6px}
 .seg .chip{padding:0 6px;text-align:center}
 .chip:disabled{opacity:.4;cursor:default}.chip.wkc{height:40px;padding:0 10px;font-size:13.5px}
-[data-look=score] .bbar{border-top:2px solid var(--fg)}[data-look=score] .bb{font-size:12.5px;letter-spacing:0;text-transform:uppercase}[data-look=score] .wk{border-radius:0;font-weight:400}
-[data-look=board] .bbar{background:#18221F;border-top:2px solid var(--fg);left:10px;right:10px;bottom:10px;max-width:1020px;font-size:14px}[data-look=board] .bb{font-size:14px;font-weight:400}
+[data-look=score] .bbar{border-top:2px solid var(--fg)}[data-look=score] .bb{font-size:11px;letter-spacing:0;text-transform:uppercase}[data-look=score] .wk{border-radius:0;font-weight:400}
+[data-look=board] .bbar{background:#18221F;border-top:2px solid var(--fg);left:10px;right:10px;bottom:10px;max-width:1020px;font-size:14px}[data-look=board] .bb{font-size:13px;font-weight:400}
 [data-look=board] .wk{border-radius:0;border-width:2px;background:none}[data-look=board] .wk:not(.past){border-color:var(--fg)}[data-look=board] .wk[aria-pressed=true]{border-color:var(--accent);background:var(--accent);color:#1F2B27}
 [data-look=board] .wrap{padding-bottom:calc(110px + env(safe-area-inset-bottom,0px))}
 .toast{position:fixed;left:50%;bottom:calc(92px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;font-size:14px;z-index:30;max-width:calc(100% - 32px);text-align:center}
@@ -185,7 +196,7 @@ const SITE='https://trueclear3-sudo.github.io/208sports/';
 const FAVKEY='pb_favs';
 const clone=o=>JSON.parse(JSON.stringify(o));
 const ls={get:k=>{try{return localStorage.getItem(k)}catch(e){return null}},set:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}},json:k=>{try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}}};
-function loadFavs(){const s=ls.json(FAVKEY);return Array.isArray(s)?s:['idf','sky','rig','bon']}
+function loadFavs(){const s=ls.json(FAVKEY);return Array.isArray(s)?s:[]}
 
 /* ---------- Shared database ----------
    One small interface with two engines behind it. With a Firebase config the app talks to Firestore, so every phone
@@ -353,11 +364,11 @@ function WeekPick({weeks,wk,setWk,cur}){
     <div class="note" style="color:var(--accent);font-weight:600">${weeks[wk].label.replace('Wk','Week')} · ${weeks[wk].games.length} game${weeks[wk].games.length===1?'':'s'}</div>`;
 }
 const BAR=[['scores','Scores',html`<rect x="3" y="5" width="18" height="14" rx="1"/><path d="M12 5v14M7 10v4M17 10v4"/>`],['teams','Teams',html`<path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6z"/>`],['standings','Standings',html`<path d="M5 20V10M12 20V4M19 20v-7"/>`],
-  ['playoffs','Playoffs',html`<path d="M7 4h10v5a5 5 0 0 1-10 0zM12 14v4M8 20h8M7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3"/>`],['fans','Fans',html`<circle cx="9" cy="9" r="3.2"/><circle cx="17" cy="10" r="2.4"/><path d="M3 19c0-3 3-5 6-5s6 2 6 5M15 15c3-.5 6 1 6 4"/>`]];
-const FAN=['players','picks','photos'];
+  ['playoffs','Playoffs',html`<path d="M7 4h10v5a5 5 0 0 1-10 0zM12 14v4M8 20h8M7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3"/>`],['picks',"Pick'em",html`<path d="M4 6h10M4 12h10M4 18h10"/><path d="M17 5l1.5 1.5L21 4M17 11l1.5 1.5L21 10M17 17l1.5 1.5L21 16"/>`],['fans','Fans',html`<circle cx="9" cy="9" r="3.2"/><circle cx="17" cy="10" r="2.4"/><path d="M3 19c0-3 3-5 6-5s6 2 6 5M15 15c3-.5 6 1 6 4"/>`]];
+const FAN=['players','photos'];
 function BottomBar({tab,pick}){
   const on=k=>k==='fans'?FAN.includes(tab):tab===k;
-  return html`<nav class="bbar" aria-label="Sections">${BAR.map(([k,l,ic])=>html`<button class="bb" aria-current=${on(k)?'page':null} onClick=${()=>pick(k==='fans'?(FAN.includes(tab)?tab:'players'):k)}><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ic}</svg>${k==='fans'&&!COMMUNITY?'Players':l}</button>`)}</nav>`;
+  return html`<nav class="bbar" aria-label="Sections">${BAR.filter(x=>COMMUNITY||x[0]!=='picks').map(([k,l,ic])=>html`<button class="bb" aria-current=${on(k)?'page':null} onClick=${()=>pick(k==='fans'?(FAN.includes(tab)?tab:'players'):k)}><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ic}</svg>${k==='fans'&&!COMMUNITY?'Players':l}</button>`)}</nav>`;
 }
 function Levels({level,setLevel,M}){
   if(M&&(M.sp.levels||['v']).length<2)return null;
@@ -430,12 +441,12 @@ function Home({M,favs,go,tab,setTab,openGame,openFavs,level,setLevel,setSport,op
   const cinfo=cats.find(c=>c[0]===cat)||['','',''],polls=COMMUNITY?(M.S.polls||[]):[],poll=polls.find(x=>x.open)||polls[0];
   const TABS=[['teams','Teams'],['scores','Scores'],['standings','Standings'],['players','Players'],['playoffs','Playoffs']].concat(COMMUNITY?[['picks',"Pick'em"],['photos','Photos']]:[]);
   return html`
-  <${InstallBar} open=${()=>openSheet({k:'install'})}/>
+
   <section class="sec"><div class="between"><h2 class="eyebrow">My teams</h2><button class="link" onClick=${openFavs}>Edit</button></div>
     <div class="myteams">${favs.map(id=>M.T[id]&&html`<button class="mt" onClick=${()=>go({v:'team',id})}><${Logo} id=${id} size=${60}/><span>${M.T[id].name}</span></button>`)}
       <button class="mt" aria-label="Add a favorite team" onClick=${openFavs} style="color:var(--muted)"><span class="add-ring">${Ico.plus}</span><span>Add</span></button></div></section>
-  ${COMMUNITY&&FAN.includes(tab)?html`<div class="seg" role="group" aria-label="Fans">${[['players','Players'],['picks',"Pick'em"],['photos','Photos']].map(([k,l])=>html`<button class="chip" aria-pressed=${tab===k} onClick=${()=>setTab(k)}>${l}</button>`)}</div>`:null}
-  <section class="sec" aria-label="Sport and level"><${Sports} M=${M} setSport=${setSport} edit=${openFavs}/><${Levels} level=${level} setLevel=${setLevel} M=${M}/></section>
+  ${COMMUNITY&&FAN.includes(tab)?html`<div class="seg" role="group" aria-label="Fans">${[['players','Players'],['photos','Photos']].map(([k,l])=>html`<button class="chip" aria-pressed=${tab===k} onClick=${()=>setTab(k)}>${l}</button>`)}</div>`:null}
+  <section class="sec" aria-label="Sport and level"><${Sports} M=${M} setSport=${setSport} edit=${openFavs}/>${tab==='picks'?null:html`<${Levels} level=${level} setLevel=${setLevel} M=${M}/>`}</section>
   ${tab==='scores'&&poll&&poll.open?html`<button class="banner between" style="width:100%;text-align:left;margin-bottom:14px;color:var(--fg)" onClick=${()=>setTab('players')}><span><b>Vote: ${poll.title}</b><br/>${poll.noms.length} nominees. One vote a day.</span><span class="btn sm pri">Vote</span></button>`:null}
   ${tab==='scores'?html`
     <section class="sec" style="padding-top:0"><h2 class="eyebrow">My teams' scores</h2>
@@ -582,34 +593,36 @@ const HOW={
   android:['Android (Chrome)',['Tap the ⋮ menu in the top right corner of Chrome.','Tap "Add to Home screen" or "Install app".','Tap "Add" or "Install".']],
   samsung:['Samsung Internet',['Tap the ☰ menu in the bottom right corner.','Tap "Add to", then "Home screen".','Tap "Add".']],
   inapp:['Open in your browser first',['You are inside another app, such as Facebook or Instagram, which cannot add apps. Tap the ••• or ⋮ menu.','Choose "Open in Safari", "Open in Chrome" or "Open in browser".','Then come back to this screen for the next steps.']]};
-function InstallSheet({onClose}){
-  const d=device(),show=d==='desktop'?['ios','android']:[d];
-  const go=async()=>{const e=installEvt;if(!e)return;installEvt=null;try{e.prompt();await e.userChoice}catch(x){}onClose()};
-  return html`<${Sheet} title="Add to home screen" onClose=${onClose}>
-    <div class="note">208 Pressbox works like an app once it is on your home screen: one tap to open, full screen, no app store.</div>
-    ${installEvt?html`<div><button class="btn pri" onClick=${go}>Install 208 Pressbox</button></div>`:null}
+function InstallSteps({after}){
+  const d=device(),show=d==='desktop'?['ios','android']:[d];const[,tick]=useState(0);
+  const go=async()=>{const e=installEvt;if(!e)return;installEvt=null;try{e.prompt();await e.userChoice}catch(x){}tick(1);if(after)after()};
+  return html`${installEvt?html`<div><button class="btn pri" onClick=${go}>Install 208 Pressbox</button></div>`:null}
     ${d==='desktop'?html`<div class="note">On your phone, open <b style="color:var(--fg)">${SITE.replace('https://','')}</b> and follow the steps for your phone.</div>`:null}
-    ${show.map(k=>html`<h3 class="eyebrow">${HOW[k][0]}</h3><div class="list">${HOW[k][1].map((s,i)=>html`<div class="li"><span class="num">${i+1}</span><span class="grow">${s}</span></div>`)}</div>`)}<//>`;
+    ${show.map(k=>html`<h3 class="eyebrow">${HOW[k][0]}</h3><div class="list">${HOW[k][1].map((s,i)=>html`<div class="li"><span class="num">${i+1}</span><span class="grow">${s}</span></div>`)}</div>`)}`;
 }
-const GUIDE=[['Follow your teams and sports','Tap Edit next to My Teams to pick your schools and turn off sports you do not follow. Your teams\' latest score and next game show first.'],
-  ['Scores, schedules and standings','Pick a sport and level, then use the bar at the bottom of the screen. Tap any team for its schedule, roster and standings.'],
-  ['Tap a game','Finished games have a short recap and a Share score button that makes a picture for Facebook or a group chat. At the game? Tap Report score.'],
-  ["Play Pick'em",'Tap Fans, then Pick\'em. Pick the winner of each game before kickoff. Your picks show on the schedule, and the leaderboard ranks you against other fans.'],
-  ['Vote and share photos','Tap Fans in the bottom bar. Vote once a day for Player of the Week under Players, and add your game photos under Photos.'],
-  ['Put it on your home screen','It opens like an app with one tap. The link at the bottom of the page shows how.']];
-function GuideSheet({onClose,openSheet}){
-  const all=COMMUNITY?GUIDE:GUIDE.filter((x,i)=>i!==3&&i!==4);
-  return html`<${Sheet} title="Welcome to 208 Pressbox" onClose=${onClose}>
-    <div class="note">Local high school sports for Eastern Idaho, free. Here is what you can do.</div>
-    <div class="list">${all.map((x,i)=>html`<div class="li" style="align-items:flex-start"><span class="num">${i+1}</span><span class="grow"><b>${x[0]}</b><div class="sub">${x[1]}</div></span></div>`)}</div>
-    <div class="row" style="flex-wrap:wrap"><button class="btn pri" onClick=${()=>openSheet({k:'favs'})}>Pick my teams</button><button class="btn" onClick=${onClose}>Got it</button></div>
-    <div class="note">You can open this guide again from the bottom of the home page.</div><//>`;
+function InstallSheet({onClose}){
+  return html`<${Sheet} title="Add to home screen" onClose=${onClose}>
+    <div class="note">208 Pressbox works like an app once it is on your home screen: one tap to open, full screen, no app store.</div><${InstallSteps} after=${onClose}/><//>`;
 }
-function InstallBar({open}){
-  const[hide,setHide]=useState(()=>standalone()||ls.get('pb_a2hs')==='x');
-  if(hide)return null;
-  return html`<div class="banner between"><span><b>Add 208 Pressbox to your home screen.</b> One tap to scores, no app store.</span>
-    <span class="row" style="flex:none"><button class="btn sm pri" onClick=${open}>Show me how</button><button class="link" aria-label="Dismiss" onClick=${()=>{ls.set('pb_a2hs','x');setHide(true)}}>Not now</button></span></div>`;
+const HIGHLIGHTS=[['Scores and schedules','Every sport, Varsity to Freshman. Use the bar at the bottom to get around.'],['Tap any game','Get a recap, share the score, or report it from the stands.']]
+  .concat(COMMUNITY?[["Play Pick'em",'Pick the winners each week and climb the leaderboard.'],['Vote and add photos','Player of the Week and game photos are under Fans.']]:[]);
+/* First open: 1) add to home screen, 2) pick teams, 3) a few highlights. Opened from the home screen it starts at step 2,
+   so nobody picks teams in the browser and then again in the installed app. */
+function Welcome({M,favs,toggle,onClose,start}){
+  const first=standalone()?1:0,[step,setStep]=useState(start==null?first:start),n=3-first,at=step-first+1;
+  const steps=html`<span class="note">Step ${at} of ${n}</span>`;
+  if(step===0)return html`<${Sheet} title="Add it to your home screen" onClose=${onClose}>${steps}
+    <div>Do this first. 208 Pressbox then opens like an app with one tap, and you finish setting up there.</div>
+    <${InstallSteps} after=${()=>setStep(1)}/>
+    <div class="note">After it is on your home screen, close this page and open 208 Pressbox from the new icon.</div>
+    <div><button class="btn" onClick=${()=>setStep(1)}>Not now, keep going here</button></div><//>`;
+  if(step===1)return html`<${Sheet} title="Pick your teams" onClose=${onClose}>${steps}
+    <div class="note">Their latest score and next game show first when you open the app. You can change this any time.</div>
+    <div class="list">${M.S.teams.map(t=>html`<div class="li"><${Logo} id=${t.id} size=${36}/><span class="grow"><b>${t.name}</b><div class="sub">${t.mascot}</div></span><button class=${'btn sm'+(favs.includes(t.id)?' pri':'')} aria-pressed=${favs.includes(t.id)} onClick=${()=>toggle(t.id)}>${favs.includes(t.id)?'Following':'Follow'}</button></div>`)}</div>
+    <div><button class="btn pri" onClick=${()=>setStep(2)}>${favs.length?'Next':'Skip for now'}</button></div><//>`;
+  return html`<${Sheet} title="You're set" onClose=${onClose}>${start==null?steps:null}
+    <div class="list">${HIGHLIGHTS.map(x=>html`<div class="li"><span class="grow"><b>${x[0]}</b><div class="sub">${x[1]}</div></span></div>`)}</div>
+    <div><button class="btn pri" onClick=${onClose}>${start==null?'Start':'Got it'}</button></div><//>`;
 }
 
 /* ---------- Report a score, and apply to be a trusted source ---------- */
@@ -678,6 +691,7 @@ function Pickem({S,sport}){
     ls.set('pb_name',name.trim());setMine(m=>({...m,[g.id]:side}));PICKED(g.id,side);
     try{await dbReady;await DB.set('picks',g.id+'__'+DB.me.uid,{week:wid,game:g.id,pick:side,uid:DB.me.uid,name:name.trim().slice(0,24),at:DB.stamp()})}catch(e){console.warn(e);SAY('That pick did not save. Check your connection.')}};
   const open=w.games.filter(g=>Date.now()<kickoff(g)&&!hasScore(g)),made=w.games.filter(g=>mine[g.id]).length;
+  const shown=w.games.filter(g=>mine[g.id]||(Date.now()<kickoff(g)&&!hasScore(g))),past=M.weeks.indexOf(w)<M.cur;   // games already under way that you did not pick are left out
   const right=w.games.filter(g=>played(g)&&g.hs!==g.as&&mine[g.id]===(g.hs>g.as?'home':'away')).length,graded=w.games.filter(g=>played(g)&&mine[g.id]).length;
   const wb=b&&b[0],sb=b&&b[1];
   const side=(g,k)=>{const s=M.sideOf(g,k),lock=Date.now()>=kickoff(g)||hasScore(g),win=played(g)&&g.hs!==g.as&&(g.hs>g.as?'home':'away')===k;
@@ -685,8 +699,8 @@ function Pickem({S,sport}){
   return html`<${WeekPick} weeks=${M.weeks} wk=${Math.min(wk,M.weeks.length-1)} setWk=${setWk} cur=${M.cur}/>
     ${wb&&wb.final&&wb.winners.length?html`<div class="banner"><b>${w.label.split(' · ')[0]} winner${wb.winners.length>1?'s':''}: ${wb.winners.join(', ')}</b> with ${wb.rows[0].right} of ${wb.rows[0].of} right. ${wb.players} fans played.</div>`:null}
     <label class="field">Your leaderboard name<input id="pk-name" value=${name} maxlength="24" onInput=${e=>setName(e.target.value)} placeholder="First name and last initial works"/></label>
-    <div class="note">${open.length?'Tap the team you think wins. You can change a pick until that game kicks off. ':'Every game this week has started. '}${made} of ${w.games.length} picked${graded?' · '+right+' of '+graded+' right so far':''}.</div>
-    <div class="grid">${w.games.map(g=>{const pl=played(g),ok=pl&&g.hs!==g.as&&mine[g.id]===(g.hs>g.as?'home':'away');
+    <div class="note">${open.length?'Tap the team you think wins. You can change a pick until that game starts. ':past?'These are the games you picked that week. ':'No games left to pick this week. Tap Upcoming to pick next week. '}${made} of ${w.games.length} picked${graded?' · '+right+' of '+graded+' right so far':''}.</div>
+    <div class="grid">${shown.map(g=>{const pl=played(g),ok=pl&&g.hs!==g.as&&mine[g.id]===(g.hs>g.as?'home':'away');
       return html`<div class="card"><div class="meta"><span>${dshort(g.date)} · ${g.time||'TIME TBD'}</span><span class=${pl&&mine[g.id]?(ok?'ok':'no'):''}>${pl?(mine[g.id]?(ok?'YOU GOT IT':'MISSED'):'NO PICK'):g.inprog?'LIVE':Date.now()>=kickoff(g)?'LOCKED':'OPEN'}</span></div>
         ${side(g,'away')}${side(g,'home')}</div>`})}</div>
     <div class="spon">Weekly prize sponsor: open</div>
@@ -759,11 +773,20 @@ function Photos({M,team,favs,openSheet,ver}){
 }
 
 /* ---------- Playoffs ---------- */
+const BSHORT={'Idaho Falls':'Id. Falls','Thunder Ridge':'Thunder R.','Canyon Ridge':'Canyon R.'};   // brackets are narrow on a phone
+function Bracket({M,b,go}){
+  const R=b.rounds,linked=i=>i<R.length-1&&R[i].games.length===2*R[i+1].games.length;
+  const side=(s,o)=>html`<div class=${'bs'+(s.score!=null&&o.score!=null&&s.score<o.score?' lose':'')}>${s.seed?html`<i>${s.seed}</i>`:null}<span class="nm" title=${s.name||''}>${s.name?(BSHORT[s.name]||s.name):'TBD'}</span>${s.score!=null?html`<b>${s.score}</b>`:null}</div>`;
+  const match=x=>{const done=x.a.score!=null&&x.b.score!=null;
+    return html`<div class="bm"><div class="bd">${done?'Final · ':''}${x.date?nice(x.date):'Date TBD'}${!done&&x.time?' · '+x.time:''}</div>${side(x.a,x.b)}${side(x.b,x.a)}</div>`};
+  const pairs=g=>{const o=[];for(let i=0;i<g.length;i+=2)o.push(g.slice(i,i+2));return o};
+  return html`<div class="bk" style=${'grid-template-columns:repeat('+R.length+',minmax(0,1fr))'}>${R.map((r,i)=>html`<div class="br"><div class="bh">${r.name}</div>
+    <div class=${'bc'+(i>0&&linked(i-1)?' fed':'')}>${linked(i)?pairs(r.games).map(p=>html`<div class="bp">${p.map(match)}</div>`):r.games.map(match)}</div></div>`)}</div>`;
+}
 function Playoffs({M,go,openGame}){
   const br=(M.S.brackets||[]).filter(b=>b.sport===M.sport),post=M.G.filter(g=>g.post);
-  const side=(s,o)=>html`<div class=${'trow'+(s.score!=null&&o.score!=null&&s.score<o.score?' lose':'')}>${s.seed?html`<span class="tag">${s.seed}</span>`:null}<${Logo} id=${s.id} name=${s.name||'TBD'} size=${28}/><span class="nm">${s.name||'To be decided'}</span>${s.score!=null?html`<span class="score" style="font-size:24px">${s.score}</span>`:null}</div>`;
-  return html`${br.map(b=>html`<h2 class="eyebrow">${b.title}</h2>${b.rounds.map(r=>html`<h3 class="note" style="margin:0;font-weight:600;letter-spacing:.8px;text-transform:uppercase">${r.name}</h3><div class="grid">${r.games.map(x=>html`<div class="card"><div class="meta"><span>${x.date?dshort(x.date):'DATE TBD'}${x.time?' · '+x.time:''}</span><span>${x.site||''}</span></div>${side(x.a,x.b)}${side(x.b,x.a)}</div>`)}</div>`)}${b.source?html`<div class="note">Bracket from ${b.source}.</div>`:null}`)}
-    ${br.length?null:html`<div class="slot"><strong>Brackets are not out yet</strong><span>The ${M.sp.name} state brackets show up here as soon as they are posted after the regular season. Every team in the bracket is listed, and games involving our ${M.S.teams.length} schools link to their team pages.</span></div>`}
+  return html`${br.map(b=>html`<h2 class="eyebrow">${b.title}</h2><${Bracket} M=${M} b=${b} go=${go}/>${b.source?html`<div class="note">Bracket from ${b.source}.</div>`:null}`)}
+    ${br.length?null:html`<div class="slot"><strong>Brackets are not out yet</strong><span>The ${M.sp.name} brackets show up here as soon as they are posted after the regular season. Every team in the bracket is listed.</span></div>`}
     ${post.length?html`<h2 class="eyebrow">Postseason games</h2><div class="grid">${post.map(g=>html`<${GameCard} M=${M} g=${g} go=${go} open=${openGame}/>`)}</div>`:null}`;
 }
 
@@ -974,12 +997,12 @@ function App(){
     ${view.v==='home'?html`<${Home} M=${M} favs=${favs} go=${go} tab=${homeTab} setTab=${setHomeTab} openGame=${openGame} openFavs=${()=>setSheet({k:'favs'})} level=${level} setLevel=${setLevel} setSport=${setSport} openSheet=${setSheet} ver=${ver}/>`:null}
     ${view.v==='team'&&M.T[view.id]?html`<${TeamPage} M=${M} id=${view.id} tab=${view.tab||'schedule'} setTab=${t=>setView({...view,tab:t})} favs=${favs} toggle=${toggle} go=${go} openGame=${openGame} openDonate=${t=>setSheet({k:'donate',id:t.id})} level=${level} setLevel=${setLevel} setSport=${setSport} openSheet=${setSheet} ver=${ver}/>`:null}
     ${view.v==='admin'?html`<${Admin} M=${M} update=${update} reset=${reset} go=${go} level=${level} setLevel=${setLevel} setSport=${setSport} me=${me} setMe=${setMe} openSheet=${setSheet} ver=${ver} bump=${bump}/>`:null}
-    ${view.v==='home'?html`<div class="note" style="padding-top:8px"><button class="link" style="min-height:44px;font-size:13px" onClick=${()=>setSheet({k:'install'})}>Add 208 Pressbox to your home screen</button> · <button class="link" style="min-height:44px;font-size:13px" onClick=${()=>setSheet({k:'guide'})}>How it works</button></div>`:null}
+    ${view.v==='home'?html`<div class="note" style="padding-top:8px"><button class="link" style="min-height:44px;font-size:13px" onClick=${()=>setSheet({k:'install'})}>Add 208 Pressbox to your home screen</button> · <button class="link" style="min-height:44px;font-size:13px" onClick=${()=>setSheet({k:'guide',start:2})}>How it works</button></div>`:null}
     ${sheet&&sheet.k==='game'&&sg?html`<${GameSheet} M=${MG} g=${sg} go=${go} onClose=${close} openSheet=${setSheet}/>`:null}
     ${sheet&&sheet.k==='share'&&sg?html`<${ShareSheet} M=${MG} g=${sg} onClose=${close}/>`:null}
     ${sheet&&sheet.k==='report'&&sg?html`<${ReportSheet} M=${MG} g=${sg} onClose=${()=>{close();bump()}}/>`:null}
     ${sheet&&sheet.k==='install'?html`<${InstallSheet} onClose=${close}/>`:null}
-    ${sheet&&sheet.k==='guide'?html`<${GuideSheet} onClose=${close} openSheet=${setSheet}/>`:null}
+    ${sheet&&sheet.k==='guide'?html`<${Welcome} M=${M} favs=${favs} toggle=${toggle} start=${sheet.start} onClose=${close}/>`:null}
     ${sheet&&sheet.k==='upload'?html`<${UploadSheet} M=${M} team=${sheet.team} onClose=${close} onDone=${bump}/>`:null}
     ${sheet&&sheet.k==='photo'?html`<${PhotoSheet} M=${M} p=${sheet.p} onClose=${close} onDone=${bump}/>`:null}
     ${sheet&&sheet.k==='favs'?html`<${FavSheet} M=${M} favs=${favs} toggle=${toggle} toggleSport=${toggleSport} onClose=${close}/>`:null}

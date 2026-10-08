@@ -21,6 +21,6 @@
   "rounds":[
    {"name":"Semifinals","games":[
     {"date":"2026-10-08","time":"4:30 PM","site":"at Twin Falls","a":{"seed":4,"name":"Jerome"},"b":{"seed":1,"id":"twi","name":"Twin Falls"}},
-    {"date":"2026-10-08","a":{"name":"Canyon Ridge or Minico"},"b":{"seed":2,"name":"Wood River"}}]},
+    {"date":"2026-10-08","a":{"name":"Canyon R./Minico"},"b":{"seed":2,"name":"Wood River"}}]},
    {"name":"Championship","games":[{"a":{},"b":{}}]}]}
 ]
