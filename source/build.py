@@ -16,6 +16,10 @@ fb = open("firebase.json").read().strip() if os.path.exists("firebase.json") els
 out = src.replace("/*BRAND*/", json.dumps(brand)).replace("/*LIB*/", lib).replace("/*DATA*/", data).replace("/*LOGOS*/", json.dumps(logos)).replace("/*FIREBASE*/null", fb)
 os.makedirs("dist", exist_ok=True)
 open("dist/preview.html", "w").write(out)
+import hashlib
+stamp = hashlib.sha1(out.encode()).hexdigest()[:12]      # lets open copies of the app notice a newer version and reload
+open("dist/version.txt", "w").write(stamp)
+out = out.replace("/*BUILD*/''", repr(stamp))
 out = out.replace("/*ADMIN*/true", "location.hash==='#admin'").replace("/*PREVIEW*/true", "false")
 out = out.replace('<meta charset="utf-8">\n', '', 1)
 head, body = out.split('<div id="app">', 1)

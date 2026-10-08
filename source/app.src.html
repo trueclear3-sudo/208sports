@@ -205,6 +205,12 @@ const FB=/*FIREBASE*/null;      // filled in from source/firebase.json once the 
 const PREVIEW=/*PREVIEW*/true;  // true only in the Claude preview build
 const COMMUNITY=!!FB||PREVIEW;  // reporting, pick'em, voting and photos need the shared database
 const SITE='https://trueclear3-sudo.github.io/208sports/';
+const BUILD=/*BUILD*/'';
+/* Phones keep an old copy of the page for a while. Check for a newer version when the app opens or comes back
+   to the screen, and reload once if there is one. */
+function checkVersion(){if(!BUILD||PREVIEW)return;fetch('version.txt?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.text():'').then(v=>{v=(v||'').trim();
+  if(v&&v!==BUILD&&ls.get('pb_reloaded')!==v){ls.set('pb_reloaded',v);location.reload()}}).catch(()=>{})}
+checkVersion();document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')checkVersion()});
 const FAVKEY='pb_favs';
 const clone=o=>JSON.parse(JSON.stringify(o));
 const ls={get:k=>{try{return localStorage.getItem(k)}catch(e){return null}},set:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}},json:k=>{try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}}};

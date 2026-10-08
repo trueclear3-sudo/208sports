@@ -342,6 +342,7 @@ def main():
     json.dump(body, open(os.path.join(SRC, "data.json"), "w"), separators=(",", ":"))
     subprocess.run([sys.executable, "build.py"], cwd=SRC, check=True)
     shutil.copy(os.path.join(SRC, "dist", "index.html"), os.path.join(ROOT, "index.html"))
+    shutil.copy(os.path.join(SRC, "dist", "version.txt"), os.path.join(ROOT, "version.txt"))
     summary = "%d new or changed results" % len(changes) if changes else "schedule or notes changed"
     open(os.path.join(HERE, "last-run.txt"), "w").write(body["pulled"] + "\n" + summary + "\n" + "\n".join(changes[:200]) + "\n")
     print("\nUpdated: " + summary); [print("  ", c) for c in changes[:60]]
