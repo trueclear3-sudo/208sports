@@ -113,6 +113,10 @@ tr.me td{background:rgba(255,184,28,.08)}
 .pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:6px}
 .ph{padding:0;border:0;background:var(--card);aspect-ratio:1;border-radius:8px;overflow:hidden}.ph img{width:100%;height:100%;object-fit:cover;display:block}
 .sheet>*{flex-shrink:0}
+.gd{width:70px;flex:none;display:flex;flex-direction:column;gap:2px;font-size:11.5px;letter-spacing:.6px;color:var(--muted)}.gd b{color:var(--fg);font-size:12.5px}
+.gr{display:flex;align-items:center;gap:8px;font-weight:600;font-size:15px;min-height:28px}.gr .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gr b{font-family:var(--disp);font-size:20px;color:var(--chalk)}.gr.lose{color:var(--muted);font-weight:500}.gr.lose b{color:var(--muted)}
+[data-look=board] .gr{font-weight:400;font-size:17px}[data-look=board] .gr:not(.lose) b,[data-look=score] .gr:not(.lose) b{color:var(--accent)}
 .bk{display:grid;gap:13px;align-items:stretch}
 .br{display:flex;flex-direction:column;min-width:0}
 .bh{font-size:11px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);text-align:center;padding-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -381,6 +385,12 @@ function Sheet({title,onClose,children}){
 function pickNote(M,g){const k=(M.picks||{})[g.id];if(!k)return null;const nm=M.sideOf(g,k).name;
   if(played(g)&&g.hs!==g.as){const ok=(g.hs>g.as?'home':'away')===k;return html`<span style=${'color:var(--'+(ok?'good':'bad')+')'}>You picked ${nm} · ${ok?'right':'missed'}</span>`}
   return html`<span style="color:var(--accent)">Your pick: ${nm}</span>`}
+function GameRow({M,g,open}){   // one compact line per game, used on the Schedule screen
+  const h=M.sideOf(g,'home'),a=M.sideOf(g,'away'),pl=played(g),sc=hasScore(g),pk=pickNote(M,g);
+  const side=(s,o)=>html`<div class=${'gr'+(pl&&s.score<o.score?' lose':'')}><${Logo} id=${s.id} name=${s.name} size=${22}/><span class="nm">${s.name}</span>${sc?html`<b>${s.score}</b>`:null}</div>`;
+  return html`<button class="li" onClick=${()=>open(g)} aria-label=${a.name+' at '+h.name}><span class="gd"><b>${dshort(g.date)}</b><span>${g.inprog?'LIVE · '+g.live.st:pl?(NOTE[g.note]||'FINAL'):g.date<todayISO()?'NO SCORE':(g.time||'TBD')}</span></span>
+    <span class="grow">${side(a,h)}${side(h,a)}${pk?html`<div class="sub" style="font-weight:600">${pk}</div>`:null}</span></button>`;
+}
 function GameCard({M,g,go,open}){
   const h=M.sideOf(g,'home'),a=M.sideOf(g,'away'),st=status(g),pl=played(g),sp=sponsorLine(M,g);
   const first=[a,h];if(sp)g.sponsors.forEach(x=>track('sponsorSeen',x.biz,true));
@@ -455,7 +465,10 @@ function Home({M,favs,go,tab,setTab,openGame,openFavs,level,setLevel,setSport,op
   ${tab==='schedule'?html`${(M.S.brackets||[]).some(b=>b.sport===M.sport)?html`<section class="sec" style="padding-top:0"><${Playoffs} M=${M} go=${go} openGame=${openGame} inSchedule=${true}/></section>`:null}
     <section class="sec" style="padding-top:0"><h2 class="eyebrow">${M.sp.name}${M.level==='v'?'':' '+LV[M.level]} schedule</h2>
       <${WeekPick} weeks=${M.weeks} wk=${Math.min(wk,M.weeks.length-1)} setWk=${setWk} cur=${M.cur}/>
-      ${M.weeks.length?html`<div class="grid">${(M.weeks[Math.min(wk,M.weeks.length-1)]||{games:[]}).games.map(g=>html`<${GameCard} M=${M} g=${g} go=${go} open=${openGame}/>`)}</div>`:html`<div class="slot"><strong>No schedule yet</strong><span>No ${M.sp.name} games have been posted yet.</span></div>`}</section>`:null}
+      ${M.weeks.length?html`<div class="list">${(M.weeks[Math.min(wk,M.weeks.length-1)]||{games:[]}).games.map(g=>html`<${GameRow} M=${M} g=${g} open=${openGame}/>`)}</div>`:html`<div class="slot"><strong>No schedule yet</strong><span>No ${M.sp.name} games have been posted yet.</span></div>`}</section>`:null}
+  ${tab==='scores'?html`<section class="sec"><h2 class="eyebrow">All games</h2>
+      <${WeekPick} weeks=${M.weeks} wk=${Math.min(wk,M.weeks.length-1)} setWk=${setWk} cur=${M.cur}/>
+      <div class="grid">${(M.weeks[Math.min(wk,M.weeks.length-1)]||{games:[]}).games.map(g=>html`<${GameCard} M=${M} g=${g} go=${go} open=${openGame}/>`)}</div></section>`:null}
   ${(tab==='scores'||tab==='schedule')&&fmtStamp(SEED.pulled)?html`<div class="note">Scores from MaxPreps, last updated ${fmtStamp(SEED.pulled)}.</div>`:null}
   ${tab==='teams'?Object.keys(M.confs).sort().map(c=>html`<section class="sec" style="padding-top:0"><h2 class="eyebrow">${c}</h2><div class="teamgrid">${M.confs[c].map(t=>{const r=M.rec(t.id);return html`<button class="tg" onClick=${()=>go({v:'team',id:t.id})}><${Logo} id=${t.id} size=${64}/><span>${t.name}</span><small>${r.all}</small></button>`})}</div></section>`):null}
   ${tab==='standings'?html`<section class="sec" style="padding-top:0">${Object.keys(M.confs).sort().map(c=>html`<${Standings} M=${M} conf=${c} go=${go}/>`)}<div class="note">${M.soccer?'Calculated from the scores in the app and ranked by points: 3 for a win, 1 for a tie. Games after the regular season are not counted as conference games. Some conference opponents are not in the app yet.':!M.fb?'Calculated from the scores in the app, so they can lag behind until scores are posted.':level==='v'?'Calculated from the scores in the app. Twin Falls plays in the 5A Great Basin; its other conference opponents are not in the app yet.':'There are no official '+LV[level]+' standings. These records come from the scores posted so far, so they can lag behind.'}</div></section>`:null}
