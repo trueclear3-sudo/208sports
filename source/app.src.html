@@ -134,6 +134,8 @@ tr.me td{background:rgba(255,184,28,.08)}
 .bc.fed .bm::before{content:'';position:absolute;left:-7px;top:50%;width:6px;border-top:2px solid var(--dash)}
 .bs{display:flex;gap:4px;align-items:center;font-family:'Barlow Condensed','Arial Narrow',sans-serif;font-size:15px;font-weight:600;min-height:24px}.bs .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bs i{font-style:normal;font-size:10.5px;color:var(--muted);width:11px;flex:none}.bs b{font-family:var(--disp);font-size:16px;color:var(--chalk)}.bs.lose{color:var(--muted);font-weight:500}.bs.lose b{color:var(--muted)}
+.bs.bsel{width:100%;background:none;border:0;color:inherit;padding:2px 0;text-align:left;cursor:pointer;min-height:30px}.bs.bsel:disabled{cursor:default}
+.bs.bsel[aria-pressed=true]{color:var(--accent);font-weight:700}.bs.bsel.ok b{color:var(--good)}.bs.bsel.no b{color:var(--bad)}.bs.bsel:not(:disabled):not([aria-pressed=true]) .nm{text-decoration:underline dotted;text-underline-offset:3px}
 .bd{font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 [data-look=board] .bm{border-width:2px;border-color:var(--fg);border-radius:0}[data-look=board] .bs:not(.lose) b{color:var(--accent)}[data-look=score] .bm{border-radius:0}[data-look=score] .bs:not(.lose) b{color:var(--accent)}
 .chips.scroll{flex-wrap:wrap;overflow:visible;padding-bottom:0}
@@ -393,6 +395,9 @@ function WeekPick({weeks,wk,setWk,cur}){
 const BAR=[['scores','Scores',html`<rect x="3" y="5" width="18" height="14" rx="1"/><path d="M12 5v14M7 10v4M17 10v4"/>`],['teams','Teams',html`<path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6z"/>`],['standings','Standings',html`<path d="M5 20V10M12 20V4M19 20v-7"/>`],
   ['schedule','Schedule',html`<rect x="3.5" y="5" width="17" height="15" rx="1.5"/><path d="M3.5 10h17M8 3v4M16 3v4M7.5 14h2M11 14h2M14.5 14h2M7.5 17h2M11 17h2"/>`],['picks',"Pick'em",html`<path d="M4 6h10M4 12h10M4 18h10"/><path d="M17 5l1.5 1.5L21 4M17 11l1.5 1.5L21 10M17 17l1.5 1.5L21 16"/>`],['fans','Fans',html`<circle cx="9" cy="9" r="3.2"/><circle cx="17" cy="10" r="2.4"/><path d="M3 19c0-3 3-5 6-5s6 2 6 5M15 15c3-.5 6 1 6 4"/>`]];
 const FAN=['players','photos'];
+// Inside a school the bottom bar switches that school's sections instead of jumping back to all schools.
+const TEAMTAB={scores:'scores',schedule:'schedule',standings:'standings',picks:'picks',fans:'stats'};
+const barOfTeamTab=t=>({scores:'scores',schedule:'schedule',standings:'standings',picks:'picks'})[t]||'players';
 function BottomBar({tab,pick}){
   const on=k=>k==='fans'?FAN.includes(tab):tab===k;
   return html`<nav class="bbar" aria-label="Sections">${BAR.filter(x=>COMMUNITY||x[0]!=='picks').map(([k,l,ic])=>html`<button class="bb" aria-current=${on(k)?'page':null} onClick=${()=>pick(k==='fans'?(FAN.includes(tab)?tab:'players'):k)}><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ic}</svg>${k==='fans'&&!COMMUNITY?'Players':l}</button>`)}</nav>`;
@@ -514,13 +519,20 @@ function TeamPage({M,id,tab,setTab,favs,toggle,go,openGame,openDonate,level,setL
   return html`
   <div class="hero"><${Logo} id=${id} size=${84}/><div><h1>${t.name} ${t.mascot}</h1><p>${M.sp.name}${level==='v'?'':' '+LV[level]} · ${r.all} overall · ${r.cf} ${t.conf}</p></div></div>
   <div class="row" style="flex-wrap:wrap;padding:10px 0 16px"><button class="btn pri" onClick=${()=>openDonate(t)}>${Ico.heart} Donate</button><button class="btn" aria-pressed=${fav} onClick=${()=>toggle(id)}>${fav?'Following':'Follow'}</button></div>
-  <div style="padding-bottom:14px;display:flex;flex-direction:column;gap:8px"><${Sports} M=${M} setSport=${setSport}/><${Levels} level=${level} setLevel=${setLevel} M=${M}/></div>
-  <nav class="tabs fit" aria-label="Team sections">${[['schedule','Schedule'],['standings','Standings'],['stats','Stats'],['roster','Roster']].concat(COMMUNITY?[['photos','Photos']]:[],[['sponsors','Sponsors']]).map(([k,l])=>html`<button class="tab" aria-current=${tab===k?'page':null} onClick=${()=>setTab(k)}>${l}</button>`)}</nav>
+  <div style="padding-bottom:14px;display:flex;flex-direction:column;gap:8px"><${Sports} M=${M} setSport=${setSport}/>${tab==='picks'?null:html`<${Levels} level=${level} setLevel=${setLevel} M=${M}/>`}</div>
+  <nav class="tabs fit" aria-label="Team sections">${[['scores','Scores'],['schedule','Schedule'],['standings','Standings'],['stats','Stats'],['roster','Roster']].concat(COMMUNITY?[['photos','Photos']]:[],[['sponsors','Sponsors']]).map(([k,l])=>html`<button class="tab" aria-current=${tab===k?'page':null} onClick=${()=>setTab(k)}>${l}</button>`)}</nav>
   <section class="sec">
   ${tab==='schedule'?html`<div class="list">${gs.map(g=>{const home=g.home===id,opp=M.sideOf(g,home?'away':'home'),mine=home?g.hs:g.as,th=home?g.as:g.hs,pl=played(g),sp=sponsorLine(M,g);
     return html`<button class="li" onClick=${()=>openGame(g)}><span style="width:64px;flex:none;font-size:12px;font-weight:600;letter-spacing:.8px;color:var(--muted)">${dshort(g.date)}</span><${Logo} id=${opp.id} name=${opp.name}/><span class="grow"><b>${g.siteUnknown?'vs':home?'vs':'at'} ${opp.name}</b><div class="sub">${M.isConf(g)?'Conference':g.post?'':'Non-conference'}${sp?html` · ${sp}`:''}${pickNote(M,g)?html`${M.isConf(g)||!g.post||sp?' · ':''}${pickNote(M,g)}`:null}</div></span>
       ${pl?html`<span class=${'pill '+(mine>th?'w':mine<th?'l':'')}>${mine>th?'W':mine<th?'L':'T'} ${mine}-${th}</span>`:html`<span class="pill u">${g.date<todayISO()?'—':(g.time||'TBD')}</span>`}</button>`})}</div>
-    ${gs.length?null:html`<div class="slot"><strong>No games listed</strong><span>${t.name} has not posted a ${M.sp.name} ${LV[level]} schedule.</span></div>`}<a class="note" href=${mpLink(t,'schedule',level,M.sport)} target="_blank" rel="noopener">Schedule on MaxPreps</a>`:null}
+    ${gs.length?null:html`<div class="slot"><strong>No games listed</strong><span>${t.name} has not posted a ${M.sp.name} ${LV[level]} schedule.</span></div>`}<a class="note" href=${mpLink(t,'schedule',level,M.sport)} target="_blank" rel="noopener">Schedule on MaxPreps</a>
+    ${level==='v'?(M.S.brackets||[]).filter(b=>b.sport===M.sport&&b.rounds.some(r=>r.games.some(x=>x.a.id===id||x.b.id===id))).map(b=>html`<h2 class="eyebrow" style="margin-top:10px">Playoffs · ${b.title}</h2><${Bracket} M=${M} b=${b} go=${go}/>`):null}`:null}
+  ${tab==='scores'?(()=>{const last=[...gs].reverse().find(played),next=gs.find(g=>!played(g)&&g.date>=todayISO()),recent=gs.filter(played).slice(-5).reverse();
+    return html`${next?html`<h2 class="eyebrow">Next game</h2><div class="grid"><${GameCard} M=${M} g=${next} go=${go} open=${openGame}/></div>`:null}
+      ${last?html`<h2 class="eyebrow" style="margin-top:6px">Last game</h2><div class="grid"><${GameCard} M=${M} g=${last} go=${go} open=${openGame}/></div>`:null}
+      ${recent.length>1?html`<h2 class="eyebrow" style="margin-top:6px">Recent results</h2><div class="list">${recent.slice(1).map(g=>html`<${GameRow} M=${M} g=${g} open=${openGame}/>`)}</div>`:null}
+      ${last||next?null:html`<div class="slot"><strong>No games yet</strong><span>${t.name} has no ${M.sp.name} ${LV[level]} games posted.</span></div>`}`})():null}
+  ${tab==='picks'?html`<div class="note">Pick'em covers every school.</div><${Pickem} key=${M.sport} S=${M.S} sport=${M.sport}/>`:null}
   ${tab==='standings'?html`<${Standings} M=${M} conf=${t.conf} me=${id} go=${go}/><div class="note">${M.vb?'SW and SL are sets won and lost in all matches.':M.soccer?'GF and GA are goals for and against in all games.':'PF and PA are points for and against in all games.'}</div>`:null}
   ${tab==='stats'&&tn?html`<h2 class="eyebrow">Team numbers · ${tn.n} game${tn.n===1?'':'s'}</h2><div class="tablebox"><table><tbody>
     <tr><td>${M.vb?'Sets won per match':M.soccer?'Goals per game':'Points per game'}</td><td>${tn.pf}</td></tr><tr><td>${M.vb?'Sets lost per match':M.soccer?'Goals allowed per game':'Points allowed per game'}</td><td>${tn.pa}</td></tr>
@@ -701,48 +713,96 @@ function ReportSheet({M,g,onClose}){
 }
 
 /* ---------- Pick'em ---------- */
+const PRED_MISS=40;   // a graded game with no predicted score counts as 40 points off
 async function scoreWeek(S,sport,w){
   const wid=sport+':'+mondayOf(w.first),picks=await DB.list('picks',[['week','==',wid]]),G={},U={};w.games.forEach(g=>G[g.id]=g);
-  picks.forEach(p=>{const g=G[p.game];if(!g)return;const u=U[p.uid]=U[p.uid]||{uid:p.uid,name:p.name||'Fan',right:0,of:0};if(p.name)u.name=p.name;
-    if((p.at||0)>kickoff(g)+60000||!played(g)||g.hs===g.as)return;u.of++;if((g.hs>g.as?'home':'away')===p.pick)u.right++});
-  const by=(a,b)=>b.right-a.right||a.of-b.of||a.name.localeCompare(b.name),rows=Object.values(U).sort(by);
-  const done=w.games.filter(played).length,final=done===w.games.length&&rows.length>0,top=rows.length?rows[0].right:0;
-  await DB.set('boards',wid,{sport,week:wid,label:w.label,rows:rows.slice(0,300),players:rows.length,done,games:w.games.length,final,winners:final?rows.filter(r=>r.right===top).map(r=>r.name):[],at:Date.now()});
-  const T={};(await DB.list('boards',[['sport','==',sport]])).filter(b=>b.week).forEach(b=>b.rows.forEach(r=>{const t=T[r.uid]=T[r.uid]||{uid:r.uid,name:r.name,right:0,of:0};t.name=r.name;t.right+=r.right;t.of+=r.of}));
+  picks.forEach(p=>{const g=G[p.game];if(!g)return;const u=U[p.uid]=U[p.uid]||{uid:p.uid,name:p.name||'Fan',right:0,of:0,off:0};if(p.name)u.name=p.name;
+    if((p.at||0)>kickoff(g)+60000||!played(g))return;
+    u.off+=p.ps&&p.ps.length===2?Math.abs(p.ps[0]-g.as)+Math.abs(p.ps[1]-g.hs):PRED_MISS;   // tiebreaker: total distance from the real scores
+    if(g.hs===g.as)return;u.of++;if((g.hs>g.as?'home':'away')===p.pick)u.right++});
+  const by=(a,b)=>b.right-a.right||a.off-b.off||a.of-b.of||a.name.localeCompare(b.name),rows=Object.values(U).sort(by);
+  const done=w.games.filter(played).length,final=done===w.games.length&&rows.length>0,top=rows.length?rows[0].right:0,topOff=rows.length?rows[0].off:0;
+  await DB.set('boards',wid,{sport,week:wid,label:w.label,rows:rows.slice(0,300),players:rows.length,done,games:w.games.length,final,winners:final?rows.filter(r=>r.right===top&&r.off===topOff).map(r=>r.name):[],at:Date.now()});
+  const T={};(await DB.list('boards',[['sport','==',sport]])).filter(b=>b.week).forEach(b=>b.rows.forEach(r=>{const t=T[r.uid]=T[r.uid]||{uid:r.uid,name:r.name,right:0,of:0,off:0};t.name=r.name;t.right+=r.right;t.of+=r.of;t.off+=r.off||0}));
   await DB.set('boards',sport+':season',{sport,rows:Object.values(T).sort(by).slice(0,300),at:Date.now()});
   return{players:rows.length,final};
 }
-function Board({title,b,uid}){
+function BrBoard({b}){const[d]=useLoad(()=>DB.get('boards','br:'+bslug(b)),[b.title]);if(!d)return null;
+  return html`${d.final&&d.winners.length?html`<div class="banner"><b>Bracket winner${d.winners.length>1?'s':''}: ${d.winners.join(', ')}</b></div>`:null}<${Board} title="Bracket leaderboard" b=${d} uid=${DB.me.uid} unit="points"/>`}
+function Board({title,b,uid,unit}){
   if(!b||!b.rows||!b.rows.length)return null;const me=b.rows.findIndex(r=>r.uid===uid);
-  return html`<h3 class="eyebrow">${title}</h3><div class="list">${b.rows.slice(0,10).map((r,i)=>html`<div class="li" style=${r.uid===uid?'background:rgba(255,184,28,.08)':''}><span class="num" style="color:var(--muted);width:28px">${i+1}</span><span class="grow"><b>${r.name}</b></span><span class="pill">${r.right}<span style="font-size:13px;color:var(--muted)"> of ${r.of}</span></span></div>`)}
+  return html`<h3 class="eyebrow">${title}</h3><div class="list">${b.rows.slice(0,10).map((r,i)=>html`<div class="li" style=${r.uid===uid?'background:rgba(255,184,28,.08)':''}><span class="num" style="color:var(--muted);width:28px">${i+1}</span><span class="grow"><b>${r.name}</b>${r.off!=null&&!unit?html`<div class="sub">scores off by ${r.off}</div>`:null}</span><span class="pill">${r.right}<span style="font-size:13px;color:var(--muted)">${unit==='points'?' pts':' of '+r.of}</span></span></div>`)}
     ${me>=10?html`<div class="li" style="background:rgba(255,184,28,.08)"><span class="num" style="color:var(--muted);width:28px">${me+1}</span><span class="grow"><b>${b.rows[me].name}</b> (you)</span><span class="pill">${b.rows[me].right}</span></div>`:null}</div>`;
+}
+function BracketPick({b,name}){
+  const wk='br:'+bslug(b);const[picks,setPicks]=useState({});
+  useEffect(()=>{let on=true;dbReady.then(()=>DB.list('picks',[['uid','==',DB.me.uid],['week','==',wk]])).then(r=>{if(!on)return;const o={};r.forEach(p=>{if(p.pick)o[p.game]=p.pick});setPicks(o)}).catch(()=>{});return()=>{on=false}},[wk]);
+  const slots=bracketSlots(b,picks),flat=slots.flat();
+  const locked=s=>!!s.win||!s.a||!s.b||(s.x.date&&Date.now()>=kickoff({date:s.x.date,time:s.x.time}));
+  const save=async(key,val)=>{try{await dbReady;await DB.set('picks',key+'__'+DB.me.uid,{week:wk,game:key,pick:val,uid:DB.me.uid,name:name.trim().slice(0,24),at:DB.stamp()})}catch(e){console.warn(e);SAY('That pick did not save. Check your connection.')}};
+  const choose=(s,team)=>{if(locked(s))return;if(!name.trim()){SAY('Type a leaderboard name first.');const el=document.getElementById('pk-name');if(el)el.focus();return}ls.set('pb_name',name.trim());
+    const n={...picks,[s.key]:team};
+    // a changed pick can strand later picks that used the old team; clear those
+    let again=true;while(again){again=false;bracketSlots(b,n).flat().forEach(z=>{if(n[z.key]&&z.r>s.r&&n[z.key]!==z.a&&n[z.key]!==z.b){delete n[z.key];again=true;save(z.key,'')}})}
+    setPicks(n);save(s.key,team)};
+  const pts=flat.reduce((t,s)=>t+(s.win&&picks[s.key]===s.win?s.pts:0),0),max=flat.reduce((t,s)=>t+(s.win?s.pts:0),0);
+  const slot=(s,team)=>{const mine=team&&picks[s.key]===team,res=s.win&&mine?(s.win===team?' ok':' no'):'';
+    return html`<button class=${'bs bsel'+(s.win&&s.win!==team?' lose':'')+res} aria-pressed=${!!mine} disabled=${locked(s)||!team} onClick=${()=>choose(s,team)}><span class="nm">${team?(BSHORT[team]||team):'Your pick'}</span>${mine?html`<b>${s.win?(s.win===team?'✓':'✗'):'●'}</b>`:null}</button>`};
+  const R=b.rounds,linked=i=>i<R.length-1&&R[i].games.length===2*R[i+1].games.length;
+  const pairs=g=>{const o=[];for(let i=0;i<g.length;i+=2)o.push(g.slice(i,i+2));return o};
+  const box=s=>html`<div class="bm"><div class="bd">${s.win?'Final':s.x.date?nice(s.x.date):'Date TBD'}${!s.win&&s.x.time?' · '+s.x.time:''}</div>${slot(s,s.a)}${slot(s,s.b)}</div>`;
+  return html`<h2 class="eyebrow">Bracket challenge · ${b.title}</h2>
+    <div class="bk" style=${'grid-template-columns:repeat('+R.length+',minmax(0,1fr))'}>${slots.map((rs,i)=>html`<div class="br"><div class="bh">${R[i].name}</div>
+      <div class=${'bc'+(i>0&&linked(i-1)?' fed':'')}>${linked(i)?pairs(rs).map(p=>html`<div class="bp">${p.map(box)}</div>`):rs.map(box)}</div></div>`)}</div>
+    <div class="note">Tap the team you think wins each game, all the way to the champion. Later rounds fill in from your picks. Games lock when they start. Each round is worth double the one before${max?'. You have '+pts+' of '+max+' points so far':''}.</div>`;
+}
+async function scoreBracket(b){
+  const wk='br:'+bslug(b),picks=await DB.list('picks',[['week','==',wk]]),flat=bracketSlots(b,{}).flat(),U={};
+  const S={};flat.forEach(s=>S[s.key]=s);
+  picks.forEach(p=>{const s=S[p.game];if(!s||!p.pick)return;const u=U[p.uid]=U[p.uid]||{uid:p.uid,name:p.name||'Fan',right:0,of:0};if(p.name)u.name=p.name;
+    if(s.x.date&&(p.at||0)>kickoff({date:s.x.date,time:s.x.time})+60000)return;if(s.win&&p.pick===s.win)u.right+=s.pts});
+  const max=flat.reduce((t,s)=>t+(s.win?s.pts:0),0),rows=Object.values(U).map(u=>({...u,of:max})).sort((a,c)=>c.right-a.right||a.name.localeCompare(c.name));
+  const final=flat.every(s=>s.win)&&rows.length>0,top=rows.length?rows[0].right:0;
+  await DB.set('boards',wk,{bracket:b.title,rows:rows.slice(0,300),players:rows.length,final,winners:final?rows.filter(r=>r.right===top).map(r=>r.name):[],at:Date.now()});
+  return{players:rows.length,final};
 }
 function Pickem({S,sport}){
   const M=useMemo(()=>model(S,sport,'v'),[S,sport]);const[wk,setWk]=useState(M.cur);const w=M.weeks[Math.min(wk,M.weeks.length-1)];
-  const wid=w?sport+':'+mondayOf(w.first):'';const[name,setName]=useState(myName());const[mine,setMine]=useState({});
+  const wid=w?sport+':'+mondayOf(w.first):'';const[name,setName]=useState(myName());const[mine,setMine]=useState({});const[pred,setPred]=useState({});
   const[b]=useLoad(()=>Promise.all([DB.get('boards',wid),DB.get('boards',sport+':season')]),[wid]);
-  useEffect(()=>{let on=true;setMine({});if(!wid)return;dbReady.then(()=>DB.list('picks',[['uid','==',DB.me.uid],['week','==',wid]])).then(r=>{if(!on)return;const o={};r.forEach(p=>o[p.game]=p.pick);setMine(o)}).catch(()=>{});return()=>{on=false}},[wid]);
+  useEffect(()=>{let on=true;setMine({});if(!wid)return;dbReady.then(()=>DB.list('picks',[['uid','==',DB.me.uid],['week','==',wid]])).then(r=>{if(!on)return;const o={},q={};r.forEach(p=>{o[p.game]=p.pick;if(p.ps)q[p.game]=p.ps});setMine(o);setPred(q)}).catch(()=>{});return()=>{on=false}},[wid]);
   if(!w)return html`<div class="slot"><strong>No games to pick</strong><span>There is no ${M.sp.name} schedule yet.</span></div>`;
   const pick=async(g,side)=>{if(Date.now()>=kickoff(g))return;if(!name.trim()){SAY('Type a leaderboard name first.');const el=document.getElementById('pk-name');if(el)el.focus();return}
     ls.set('pb_name',name.trim());setMine(m=>({...m,[g.id]:side}));PICKED(g.id,side);
-    try{await dbReady;await DB.set('picks',g.id+'__'+DB.me.uid,{week:wid,game:g.id,pick:side,uid:DB.me.uid,name:name.trim().slice(0,24),at:DB.stamp()})}catch(e){console.warn(e);SAY('That pick did not save. Check your connection.')}};
+    let ps=pred[g.id];if(ps&&ps[0]!==ps[1]&&(ps[1]>ps[0]?'home':'away')!==side){ps=null;setPred(q=>{const n={...q};delete n[g.id];return n})}   // a prediction that disagrees with the pick is dropped
+    await savePick(g,side,ps)};
+  const savePick=async(g,side,ps)=>{try{await dbReady;const d={week:wid,game:g.id,pick:side,uid:DB.me.uid,name:name.trim().slice(0,24),at:DB.stamp()};if(ps)d.ps=ps;await DB.set('picks',g.id+'__'+DB.me.uid,d)}catch(e){console.warn(e);SAY('That pick did not save. Check your connection.')}};
+  const predict=(g,k,v)=>{if(Date.now()>=kickoff(g))return;const cur=pred[g.id]||['',''],n=[...cur];n[k==='away'?0:1]=v===''?'':Math.max(0,parseInt(v,10)||0);setPred(q=>({...q,[g.id]:n}));
+    if(n[0]===''||n[1]==='')return;if(!name.trim()){SAY('Type a leaderboard name first.');return}ls.set('pb_name',name.trim());
+    const side=n[0]===n[1]?(mine[g.id]||'home'):n[1]>n[0]?'home':'away';setMine(m=>({...m,[g.id]:side}));PICKED(g.id,side);clearTimeout(predict.t);predict.t=setTimeout(()=>savePick(g,side,n),600)};
   const open=w.games.filter(g=>Date.now()<kickoff(g)&&!hasScore(g)),made=w.games.filter(g=>mine[g.id]).length;
   const shown=w.games.filter(g=>mine[g.id]||(Date.now()<kickoff(g)&&!hasScore(g))),past=M.weeks.indexOf(w)<M.cur;   // games already under way that you did not pick are left out
   const right=w.games.filter(g=>played(g)&&g.hs!==g.as&&mine[g.id]===(g.hs>g.as?'home':'away')).length,graded=w.games.filter(g=>played(g)&&mine[g.id]).length;
   const wb=b&&b[0],sb=b&&b[1];
   const side=(g,k)=>{const s=M.sideOf(g,k),lock=Date.now()>=kickoff(g)||hasScore(g),win=played(g)&&g.hs!==g.as&&(g.hs>g.as?'home':'away')===k;
     return html`<button class="pkb" aria-pressed=${mine[g.id]===k} disabled=${lock} onClick=${()=>pick(g,k)}><${Logo} id=${s.id} name=${s.name} size=${36}/><span class="nm">${s.name}</span>${hasScore(g)?html`<span class="pill" style=${win?'':'color:var(--muted)'}>${s.score}</span>`:null}</button>`};
-  return html`<${WeekPick} weeks=${M.weeks} wk=${Math.min(wk,M.weeks.length-1)} setWk=${setWk} cur=${M.cur}/>
+  const brs=(S.brackets||[]).filter(x=>x.sport===sport);
+  return html`<label class="field">Your leaderboard name<input id="pk-name" value=${name} maxlength="24" onInput=${e=>setName(e.target.value)} placeholder="First name and last initial works"/></label>
+    ${brs.map(x=>html`<${BracketPick} key=${x.title} b=${x} name=${name}/><${BrBoard} b=${x}/>`)}
+    ${brs.length?html`<h2 class="eyebrow" style="margin-top:8px">Weekly pick'em</h2>`:null}
+    <${WeekPick} weeks=${M.weeks} wk=${Math.min(wk,M.weeks.length-1)} setWk=${setWk} cur=${M.cur}/>
     ${wb&&wb.final&&wb.winners.length?html`<div class="banner"><b>${w.label.split(' · ')[0]} winner${wb.winners.length>1?'s':''}: ${wb.winners.join(', ')}</b> with ${wb.rows[0].right} of ${wb.rows[0].of} right. ${wb.players} fans played.</div>`:null}
-    <label class="field">Your leaderboard name<input id="pk-name" value=${name} maxlength="24" onInput=${e=>setName(e.target.value)} placeholder="First name and last initial works"/></label>
     <div class="note">${open.length?'Tap the team you think wins. You can change a pick until that game starts. ':past?'These are the games you picked that week. ':'No games left to pick this week. Tap Upcoming to pick next week. '}${made} of ${w.games.length} picked${graded?' · '+right+' of '+graded+' right so far':''}.</div>
     <div class="grid">${shown.map(g=>{const pl=played(g),ok=pl&&g.hs!==g.as&&mine[g.id]===(g.hs>g.as?'home':'away');
       return html`<div class="card"><div class="meta"><span>${dshort(g.date)} · ${g.time||'TIME TBD'}</span><span class=${pl&&mine[g.id]?(ok?'ok':'no'):''}>${pl?(mine[g.id]?(ok?'YOU GOT IT':'MISSED'):'NO PICK'):g.inprog?'LIVE':Date.now()>=kickoff(g)?'LOCKED':'OPEN'}</span></div>
-        ${side(g,'away')}${side(g,'home')}</div>`})}</div>
+        ${side(g,'away')}${side(g,'home')}
+        ${Date.now()<kickoff(g)&&!hasScore(g)||(pred[g.id]&&pred[g.id][0]!=='')?html`<div class="row" style="gap:8px;font-size:13px"><span class="note" style="flex:1">${hasScore(g)||Date.now()>=kickoff(g)?'Your predicted score':'Predict the score (tiebreaker)'}</span>
+          <input class="in sc" style="width:56px" inputmode="numeric" aria-label=${M.sideOf(g,'away').name+' predicted score'} disabled=${Date.now()>=kickoff(g)} value=${(pred[g.id]||[])[0]??''} onInput=${e=>predict(g,'away',e.target.value.replace(/[^0-9]/g,''))}/><span class="note">-</span>
+          <input class="in sc" style="width:56px" inputmode="numeric" aria-label=${M.sideOf(g,'home').name+' predicted score'} disabled=${Date.now()>=kickoff(g)} value=${(pred[g.id]||[])[1]??''} onInput=${e=>predict(g,'home',e.target.value.replace(/[^0-9]/g,''))}/></div>`:null}</div>`})}</div>
     <div class="spon">Weekly prize sponsor: open</div>
     <${Board} title=${w.label.split(' · ')[0]+' leaderboard'} b=${wb} uid=${DB.me.uid}/>
     <${Board} title="Season leaderboard" b=${sb} uid=${DB.me.uid}/>
-    ${wb?html`<div class="note">Leaderboard updated ${fmtStamp(new Date(wb.at).toISOString())||''}. Free to play. Ties share the win.</div>`:html`<div class="note">The leaderboard posts after this week's first final. Free to play.</div>`}`;
+    ${wb?html`<div class="note">Leaderboard updated ${fmtStamp(new Date(wb.at).toISOString())||''}. Free to play. Ties go to the closest predicted scores.</div>`:html`<div class="note">The leaderboard posts after this week's first final. Free to play. Ties go to whoever predicted the scores closest.</div>`}`;
 }
 
 /* ---------- Player of the week ---------- */
@@ -809,6 +869,14 @@ function Photos({M,team,favs,openSheet,ver}){
 }
 
 /* ---------- Playoffs ---------- */
+const bslug=b=>b.title.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+const bwin=x=>x.a.score!=null&&x.b.score!=null&&x.a.score!==x.b.score?(x.a.score>x.b.score?x.a.name:x.b.name):null;
+/* Bracket pick'em: pick every game, later rounds fill in from your own earlier picks. Each round is worth double the one before. */
+function bracketSlots(b,picks){
+  const R=b.rounds,key=(r,i)=>'br:'+bslug(b)+':r'+r+'g'+i,fed=r=>r>0&&R[r-1].games.length===2*R[r].games.length;
+  return R.map((rd,r)=>rd.games.map((x,i)=>{const from=k=>{if(!fed(r))return null;const src=R[r-1].games[2*i+k];return bwin(src)||picks[key(r-1,2*i+k)]||null};
+    const a=x.a.name||from(0),bb=x.b.name||from(1);return{x,r,i,key:key(r,i),a,b:bb,win:bwin(x),pts:Math.pow(2,r)}}));
+}
 const BSHORT={'Idaho Falls':'Id. Falls','Thunder Ridge':'Thunder R.','Canyon Ridge':'Canyon R.'};   // brackets are narrow on a phone
 function Bracket({M,b,go}){
   const R=b.rounds,linked=i=>i<R.length-1&&R[i].games.length===2*R[i+1].games.length;
@@ -880,6 +948,7 @@ function AdmFans({M,update}){
   return html`<h2 class="eyebrow">Pick'em · ${Mv.sp.name}</h2>
   ${w?html`<${WeekPick} weeks=${Mv.weeks} wk=${Math.min(wk,Mv.weeks.length-1)} setWk=${setWk} cur=${Mv.cur}/>
   <div class="row" style="flex-wrap:wrap"><button class="btn pri" disabled=${busy} onClick=${score}>Update ${w.label.split(' · ')[0]} leaderboard</button><span class="note">${w.games.filter(played).length} of ${w.games.length} games final. When all are final the winner is announced on the Pick'em tab.</span></div>`:html`<div class="note">No schedule for this sport yet.</div>`}
+  ${(S.brackets||[]).filter(x=>x.sport===M.sport).map(x=>html`<div class="row" style="flex-wrap:wrap;margin-top:6px"><button class="btn" disabled=${busy} onClick=${async()=>{setBusy(true);try{const r=await scoreBracket(x);SAY(r.players?'Bracket leaderboard updated: '+r.players+' fans'+(r.final?', winner announced.':'.'):'Nobody has filled out this bracket yet.')}catch(e){console.warn(e);SAY('Could not update the bracket leaderboard.')}setBusy(false)}}>Update bracket leaderboard</button><span class="note">${x.title}</span></div>`)}
   <h2 class="eyebrow" style="margin-top:12px">Player of the week</h2>
   <label class="field">Title<input id="pl-title" value=${pf.title} onInput=${e=>setPf({...pf,title:e.target.value})}/></label>
   <div class="formrow"><label class="field">Player<input id="pl-name" value=${nf.name} onInput=${e=>setNf({...nf,name:e.target.value})}/></label><label class="field">Team<select id="pl-team" value=${nf.team} onChange=${e=>setNf({...nf,team:e.target.value})}>${S.teams.map(t=>html`<option value=${t.id}>${t.name}</option>`)}</select></label><label class="field">What they did<input id="pl-line" value=${nf.line} onInput=${e=>setNf({...nf,line:e.target.value})} placeholder="3 TDs, 142 yards rushing"/></label>
@@ -1034,7 +1103,7 @@ function App(){
       <div class="hdr-btns"><button class="icon" aria-label="Search" onClick=${()=>setSheet({k:'search'})}>${Ico.search}</button>${adm?html`<button class="icon" aria-label="Admin" onClick=${()=>go({v:'admin'})}>${Ico.gear}</button>`:null}</div></header>
     ${view.v==='home'?html`<${Home} M=${M} favs=${favs} go=${go} tab=${homeTab} setTab=${setHomeTab} openGame=${openGame} openFavs=${()=>setSheet({k:'favs'})} level=${level} setLevel=${setLevel} setSport=${setSport} openSheet=${setSheet} ver=${ver}/>`:null}
     ${view.v==='home'?html`<div class="ctx"><span>All schools</span> · ${M.sp.name}${M.level==='v'?'':' · '+LV[M.level]}</div>`:null}
-    ${view.v==='team'&&M.T[view.id]?html`<div class="tpage" style=${th?'--accent:'+th.acc+';--on-accent:'+th.onAcc:''}><${TeamPage} M=${M} id=${view.id} tab=${view.tab||'schedule'} setTab=${t=>setView({...view,tab:t})} favs=${favs} toggle=${toggle} go=${go} openGame=${openGame} openDonate=${t=>setSheet({k:'donate',id:t.id})} level=${level} setLevel=${setLevel} setSport=${setSport} openSheet=${setSheet} ver=${ver}/></div>`:null}
+    ${view.v==='team'&&M.T[view.id]?html`<div class="tpage" style=${th?'--accent:'+th.acc+';--on-accent:'+th.onAcc:''}><${TeamPage} M=${M} id=${view.id} tab=${view.tab||'scores'} setTab=${t=>setView({...view,tab:t})} favs=${favs} toggle=${toggle} go=${go} openGame=${openGame} openDonate=${t=>setSheet({k:'donate',id:t.id})} level=${level} setLevel=${setLevel} setSport=${setSport} openSheet=${setSheet} ver=${ver}/></div>`:null}
     ${view.v==='admin'?html`<${Admin} M=${M} update=${update} reset=${reset} go=${go} level=${level} setLevel=${setLevel} setSport=${setSport} me=${me} setMe=${setMe} openSheet=${setSheet} ver=${ver} bump=${bump}/>`:null}
     ${view.v==='home'?html`<div class="note" style="padding-top:8px"><button class="link" style="min-height:44px;font-size:13px" onClick=${()=>setSheet({k:'install'})}>Add 208 Pressbox to your home screen</button> · <button class="link" style="min-height:44px;font-size:13px" onClick=${()=>setSheet({k:'guide',start:2})}>How it works</button></div>`:null}
     ${sheet&&sheet.k==='game'&&sg?html`<${GameSheet} M=${MG} g=${sg} go=${go} onClose=${close} openSheet=${setSheet}/>`:null}
@@ -1047,7 +1116,7 @@ function App(){
     ${sheet&&sheet.k==='favs'?html`<${FavSheet} M=${M} favs=${favs} toggle=${toggle} toggleSport=${toggleSport} onClose=${close}/>`:null}
     ${sheet&&sheet.k==='search'?html`<${SearchSheet} M=${M} go=${go} setSport=${setSport} setLevel=${setLevel} onClose=${close}/>`:null}
     ${sheet&&sheet.k==='donate'?html`<${DonateSheet} t=${M.T[sheet.id]} onClose=${close}/>`:null}
-    ${view.v!=='admin'?html`<${BottomBar} tab=${view.v==='home'?homeTab:''} pick=${k=>{setHomeTab(k);go({v:'home'})}}/>`:null}
+    ${view.v!=='admin'?html`<${BottomBar} tab=${view.v==='home'?homeTab:view.v==='team'?barOfTeamTab(view.tab||'scores'):''} pick=${k=>{if(view.v==='team'&&k!=='teams'){const f=FAN.includes(k)?'fans':k;setView({...view,tab:TEAMTAB[f]||'scores'});try{window.scrollTo(0,0)}catch(e){}}else{setHomeTab(k);go({v:'home'})}}}/>`:null}
     ${toast?html`<div class="toast" role="status">${toast}</div>`:null}
   </div>`;
 }
