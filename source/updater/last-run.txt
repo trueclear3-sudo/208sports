@@ -1,16 +1,4 @@
-2026-10-09T06:43:21Z
-14 new or changed results
-Football JV: Century 9, Bonneville 24
-Football JV: Thunder Ridge 93, Rigby 7
-Football Freshman: score corrected on 2026-10-08
-Boys Soccer: Skyline 0, Idaho Falls 4
-Boys Soccer: Twin Falls 3, Jerome 2
-Girls Soccer: Rigby 0, Highland 9
-Girls Soccer: Idaho Falls 0, Hillcrest 1
-Girls Soccer: Thunder Ridge 0, Madison 3
-Girls Soccer: Pocatello 0, Skyline 4
-Girls Soccer: Jerome 1, Twin Falls 7
-Volleyball: Blackfoot 3, Shelley 1
-Volleyball: Century 0, Highland 3
-Volleyball: Idaho Falls 0, Rigby 3
-Volleyball: Canyon Ridge 0, Twin Falls 3
+2026-10-09T18:49:45Z
+2 new or changed results
+Football JV: score corrected on 2026-10-08
+Volleyball: Hillcrest 3, Bonneville 2
