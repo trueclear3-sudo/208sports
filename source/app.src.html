@@ -146,6 +146,12 @@ tr.me td{background:rgba(255,184,28,.08)}
 .bbar{position:fixed;left:0;right:0;bottom:0;z-index:5;background:var(--bg);border-top:1px solid var(--line);display:grid;grid-auto-flow:column;grid-auto-columns:1fr;max-width:1040px;margin:0 auto;padding:6px 4px calc(8px + env(safe-area-inset-bottom,0px))}
 .bb{background:none;border:0;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0;font-size:12px;font-weight:600;min-height:52px;padding:2px 0}
 .bb[aria-current=page]{color:var(--accent)}
+.bb.bpk{color:var(--on-accent);background:var(--accent);border-radius:14px;margin:-14px 2px 0;box-shadow:0 0 0 4px var(--bg);font-weight:700}.bb.bpk[aria-current=page]{color:var(--on-accent);outline:2px solid var(--chalk);outline-offset:2px}
+.pkhero{border:2px solid var(--accent);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:8px;background:rgba(255,184,28,.07)}
+.pkhero h2{margin:0;font-family:var(--disp);font-size:30px;line-height:1;color:var(--accent);letter-spacing:.5px}
+.pkstat{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;text-align:center}.pkstat b{display:block;font-family:var(--disp);font-size:26px;color:var(--chalk)}.pkstat span{font-size:12px;color:var(--muted)}
+.tsec{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:12px 0 6px;border-bottom:3px solid var(--accent);margin-bottom:8px}.tsec h1{margin:0;font-family:var(--disp);font-size:30px;line-height:1;color:var(--chalk);text-transform:uppercase}.tsec span{font-size:13px;color:var(--muted);text-align:right}
+.pickers{margin:8px 0}.pickers summary{cursor:pointer;font-weight:600;color:var(--fg);min-height:40px;display:flex;align-items:center;gap:8px;list-style:none}.pickers summary span{color:var(--accent);font-size:13px;text-decoration:underline}.pickers[open] summary span{display:none}
 .wks{display:grid;gap:4px}
 .wk{height:44px;padding:0;border:1px solid var(--line);background:var(--card);font-family:var(--disp);font-weight:700;font-size:17px;border-radius:8px;color:var(--fg)}
 .wk.past{color:var(--muted)}.wk[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
@@ -285,12 +291,13 @@ function applyPatch(seed,p,live){
     Object.keys(p.rosters||{}).forEach(k=>{const[tid,sp,lv]=k.split('|');if(tid===t.id){t.rosters[sp]=t.rosters[sp]||{};t.rosters[sp][lv]=p.rosters[k]}})});
   Object.keys(p.stats||{}).forEach(k=>{const[tid,sp]=k.split('|'),t=S.teams.find(x=>x.id===tid);if(t){t.stats=t.stats||{};t.stats[sp]=p.stats[k]}});
   S.flags=S.flags.filter(f=>!(p.flagsDone||[]).includes(f));
-  S.polls=p.polls||[];S.recaps=p.recaps||{};S.look=p.look||'board';
+  S.polls=p.polls||[];S.recaps=p.recaps||{};S.look=p.look||'board';S.prize=p.prize||{need:0};
+  S.brackets=(S.brackets||[]).map(b=>resolveBracket(S,b));
   return S;
 }
 function derivePatch(S){
   const J=JSON.stringify,sg={},st={};SEED.games.forEach(g=>sg[g.id]=g);SEED.teams.forEach(t=>st[t.id]=t);
-  const p={scores:{},sponsors:{},rosters:{},stats:{},teams:{},favBiz:{},businesses:S.businesses||[],flagsDone:SEED.flags.filter(f=>!S.flags.includes(f)),polls:S.polls||[],recaps:S.recaps||{},look:S.look||'board'};
+  const p={scores:{},sponsors:{},rosters:{},stats:{},teams:{},favBiz:{},businesses:S.businesses||[],flagsDone:SEED.flags.filter(f=>!S.flags.includes(f)),polls:S.polls||[],recaps:S.recaps||{},look:S.look||'board',prize:S.prize||{need:0}};
   S.games.forEach(g=>{const o=sg[g.id];if(!o)return;if(g.hs!==o.hs||g.as!==o.as)p.scores[g.id]=[g.as??null,g.hs??null];if(g.sponsors.length)p.sponsors[g.id]={mode:g.sponsorMode,list:g.sponsors}});
   S.teams.forEach(t=>{const o=st[t.id];if(!o)return;if(t.favBiz.length)p.favBiz[t.id]=t.favBiz;
     if(t.name!==o.name||t.mascot!==o.mascot||J(t.links)!==J(o.links))p.teams[t.id]={name:t.name,mascot:t.mascot,links:t.links};
@@ -304,6 +311,38 @@ const myName=()=>ls.get('pb_name')||'';
 const pend={},seen=new Set();let pendT;
 function track(a,b,once){if(!COMMUNITY||DB.me.admin&&DB.kind==='fire')return;if(once){if(seen.has(a+b))return;seen.add(a+b)}pend[a]=pend[a]||{};pend[a][b]=(pend[a][b]||0)+1;clearTimeout(pendT);pendT=setTimeout(flushTrack,5000)}
 function flushTrack(){const d={};Object.keys(pend).forEach(k=>{d[k]=pend[k];delete pend[k]});if(Object.keys(d).length)dbReady.then(()=>DB.inc('stats',todayISO(),d)).catch(()=>{})}
+/* Invites: each fan's link carries their id (?r=). A new phone that opens it counts as a join for the inviter. */
+const myInviteLink=()=>SITE+'?r='+DB.me.uid;
+async function sendInvite(text){
+  const url=myInviteLink();let sent=false;
+  try{if(navigator.share){await navigator.share({title:'208 Pressbox',text,url});sent=true}}catch(e){if(e&&e.name==='AbortError')return false}
+  if(!sent){try{await navigator.clipboard.writeText(text+' '+url);SAY('Invite link copied. Paste it in a text or group chat.');sent=true}catch(e){SAY(url)}}
+  try{await dbReady;const n=myName();if(n)await DB.set('invites',DB.me.uid,{name:n},true);await DB.inc('invites',DB.me.uid,{sent:1})}catch(e){console.warn(e)}
+  return true;
+}
+function noteJoin(){if(!COMMUNITY)return;let r='';try{r=new URLSearchParams(location.search).get('r')||''}catch(e){}
+  if(r){try{history.replaceState(null,'',location.pathname+location.hash)}catch(e){}}
+  if(!r||ls.get('pb_joined'))return;
+  dbReady.then(async()=>{if(r===DB.me.uid)return;const had=await DB.get('joins',DB.me.uid).catch(()=>null);if(!had)await DB.set('joins',DB.me.uid,{ref:r,at:DB.stamp(),active:false});ls.set('pb_joined','1')}).catch(e=>console.warn(e))}
+function markActive(){if(!ls.get('pb_joined')||ls.get('pb_active'))return;ls.set('pb_active','1');dbReady.then(()=>DB.set('joins',DB.me.uid,{active:true},true)).catch(()=>{})}
+async function joinCounts(){const all=await DB.list('joins');const c={};all.forEach(j=>{const x=c[j.ref]=c[j.ref]||{joined:0,active:0};x.joined++;if(j.active)x.active++});return c}
+function InviteBox({S}){
+  const need=(S.prize||{}).need||0;
+  const[d,reload]=useLoad(async()=>{const[i,n]=await Promise.all([DB.get('invites',DB.me.uid).catch(()=>null),DB.count('joins',[['ref','==',DB.me.uid]]).catch(()=>0)]);return{sent:(i&&i.sent)||0,joined:n}},[]);
+  const sent=d?d.sent:0,joined=d?d.joined:0,ok=!need||joined>=need;
+  return html`<div class="card" style="gap:8px"><div class="between"><b>Invite friends</b>${need?html`<span class=${'tag'} style=${ok?'color:var(--good);border-color:var(--good)':''}>${ok?'Prize eligible':joined+' of '+need+' joined'}</span>`:null}</div>
+    <div class="note">${need?'Get '+need+' friend'+(need>1?'s':'')+' to join with your link to be eligible for prizes. ':''}You have sent ${sent} invite${sent===1?'':'s'} and ${joined} ${joined===1?'person has':'people have'} joined.</div>
+    <div><button class="btn pri" onClick=${async()=>{if(!myName()){SAY('Type a leaderboard name first.');const el=document.getElementById('pk-name');if(el)el.focus();return}if(await sendInvite('Play Pick\'em with me on 208 Pressbox, local high school scores and picks.'))reload()}}>${Ico.share} Send my invite link</button></div></div>`;
+}
+function PickPromo({S,sport,go}){
+  const M=useMemo(()=>model(S,sport,'v'),[S,sport]),w=M.weeks[M.cur];if(!w)return null;
+  const open=w.games.filter(g=>Date.now()<kickoff(g)&&!hasScore(g)),next=open.map(kickoff).sort((a,b)=>a-b)[0],brs=(S.brackets||[]).filter(b=>b.sport===sport).length;
+  if(!open.length&&!brs)return null;
+  const left=next?Math.max(0,next-Date.now()):0,hrs=Math.floor(left/36e5),days=Math.floor(hrs/24);
+  return html`<button class="pkhero" style="width:100%;text-align:left;color:var(--fg);margin-bottom:14px" onClick=${go}>
+    <div class="between"><h2>PICK'EM</h2><span class="btn sm pri">Make picks</span></div>
+    <div>${open.length?open.length+' '+M.sp.name+' game'+(open.length>1?'s':'')+' open this week'+(brs?' plus the playoff bracket':''):'The playoff bracket is open'}.${next?' First game locks in '+(days?days+' day'+(days>1?'s':''):hrs?hrs+' hour'+(hrs>1?'s':''):'under an hour')+'.':''}</div></button>`;
+}
 function countVisit(){if(!COMMUNITY)return;const d=todayISO();if(ls.get('pb_visit')===d)return;dbReady.then(()=>{if(DB.me.admin&&DB.kind==='fire')return;return DB.set('visits',d+'__'+DB.me.uid,{day:d,uid:DB.me.uid,home:standalone()}).then(()=>ls.set('pb_visit',d))}).catch(()=>{})}
 const standalone=()=>{try{return matchMedia('(display-mode: standalone)').matches||navigator.standalone===true}catch(e){return false}};
 const DAYS=['SUN','MON','TUE','WED','THU','FRI','SAT'],MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -400,7 +439,7 @@ const TEAMTAB={scores:'scores',schedule:'schedule',standings:'standings',picks:'
 const barOfTeamTab=t=>({scores:'scores',schedule:'schedule',standings:'standings',picks:'picks'})[t]||'players';
 function BottomBar({tab,pick}){
   const on=k=>k==='fans'?FAN.includes(tab):tab===k;
-  return html`<nav class="bbar" aria-label="Sections">${BAR.filter(x=>COMMUNITY||x[0]!=='picks').map(([k,l,ic])=>html`<button class="bb" aria-current=${on(k)?'page':null} onClick=${()=>pick(k==='fans'?(FAN.includes(tab)?tab:'players'):k)}><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ic}</svg>${k==='fans'&&!COMMUNITY?'Players':l}</button>`)}</nav>`;
+  return html`<nav class="bbar" aria-label="Sections">${BAR.filter(x=>COMMUNITY||x[0]!=='picks').map(([k,l,ic])=>html`<button class=${'bb'+(k==='picks'?' bpk':'')} aria-current=${on(k)?'page':null} onClick=${()=>pick(k==='fans'?(FAN.includes(tab)?tab:'players'):k)}><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ic}</svg>${k==='fans'&&!COMMUNITY?'Players':l}</button>`)}</nav>`;
 }
 function Levels({level,setLevel,M}){
   if(M&&(M.sp.levels||['v']).length<2)return null;
@@ -485,6 +524,7 @@ function Home({M,favs,go,tab,setTab,openGame,openFavs,level,setLevel,setSport,op
       <button class="mt" aria-label="Add a favorite team" onClick=${openFavs} style="color:var(--muted)"><span class="add-ring">${Ico.plus}</span><span>Add</span></button></div></section>
   ${COMMUNITY&&FAN.includes(tab)?html`<div class="seg" role="group" aria-label="Fans">${[['players','Players'],['photos','Photos']].map(([k,l])=>html`<button class="chip" aria-pressed=${tab===k} onClick=${()=>setTab(k)}>${l}</button>`)}</div>`:null}
   <section class="sec" aria-label="Sport and level"><${Sports} M=${M} setSport=${setSport} edit=${openFavs}/>${tab==='picks'?null:html`<${Levels} level=${level} setLevel=${setLevel} M=${M}/>`}</section>
+  ${tab==='scores'&&COMMUNITY?html`<${PickPromo} S=${M.S} sport=${M.sport} go=${()=>setTab('picks')}/>`:null}
   ${tab==='scores'&&poll&&poll.open?html`<button class="banner between" style="width:100%;text-align:left;margin-bottom:14px;color:var(--fg)" onClick=${()=>setTab('players')}><span><b>Vote: ${poll.title}</b><br/>${poll.noms.length} nominees. One vote a day.</span><span class="btn sm pri">Vote</span></button>`:null}
   ${tab==='scores'?html`
     <section class="sec" style="padding-top:0"><h2 class="eyebrow">My teams' scores</h2>
@@ -517,10 +557,11 @@ function TeamPage({M,id,tab,setTab,favs,toggle,go,openGame,openDonate,level,setL
   useEffect(()=>{track('team',id)},[id]);if(tab==='sponsors')biz.forEach(b=>track('sponsorSeen',b.id,true));
   const skey=level==='v'?M.sport:M.sport+'-'+level,fstats=(t.stats||{})[skey]||{},tcats=catsFor(M,skey).filter(c=>(fstats[c[0]]||[]).length),hasStats=tcats.length>0,tn=teamNumbers(M,id),roster=((t.rosters[M.sport]||{})[level])||[];
   return html`
-  <div class="hero"><${Logo} id=${id} size=${84}/><div><h1>${t.name} ${t.mascot}</h1><p>${M.sp.name}${level==='v'?'':' '+LV[level]} · ${r.all} overall · ${r.cf} ${t.conf}</p></div></div>
-  <div class="row" style="flex-wrap:wrap;padding:10px 0 16px"><button class="btn pri" onClick=${()=>openDonate(t)}>${Ico.heart} Donate</button><button class="btn" aria-pressed=${fav} onClick=${()=>toggle(id)}>${fav?'Following':'Follow'}</button></div>
-  <div style="padding-bottom:14px;display:flex;flex-direction:column;gap:8px"><${Sports} M=${M} setSport=${setSport}/>${tab==='picks'?null:html`<${Levels} level=${level} setLevel=${setLevel} M=${M}/>`}</div>
-  <nav class="tabs fit" aria-label="Team sections">${[['scores','Scores'],['schedule','Schedule'],['standings','Standings'],['stats','Stats'],['roster','Roster']].concat(COMMUNITY?[['photos','Photos']]:[],[['sponsors','Sponsors']]).map(([k,l])=>html`<button class="tab" aria-current=${tab===k?'page':null} onClick=${()=>setTab(k)}>${l}</button>`)}</nav>
+  ${tab==='scores'?html`<div class="hero"><${Logo} id=${id} size=${84}/><div><h1>${t.name} ${t.mascot}</h1><p>${M.sp.name}${level==='v'?'':' '+LV[level]} · ${r.all} overall · ${r.cf} ${t.conf}</p></div></div>
+  <div class="row" style="flex-wrap:wrap;padding:10px 0 12px"><button class="btn pri" onClick=${()=>openDonate(t)}>${Ico.heart} Donate</button><button class="btn" aria-pressed=${fav} onClick=${()=>toggle(id)}>${fav?'Following':'Follow'}</button></div>`
+    :html`<div class="tsec"><h1>${({schedule:'Schedule',standings:'Standings',picks:"Pick'em",stats:'Players',roster:'Roster',photos:'Photos',sponsors:'Sponsors'})[tab]||''}</h1><span>${tab==='picks'?'All schools':M.sp.name+(level==='v'?'':' · '+LV[level])+' · '+r.all}</span></div>`}
+  ${tab==='picks'?null:html`<details class="pickers" open=${tab==='scores'}><summary>${M.sp.name} · ${LV[level]} <span>change</span></summary><div style="display:flex;flex-direction:column;gap:8px;padding-top:8px"><${Sports} M=${M} setSport=${setSport}/><${Levels} level=${level} setLevel=${setLevel} M=${M}/></div></details>`}
+  ${['stats','roster','photos','sponsors'].includes(tab)?html`<nav class="seg" style="margin:6px 0 2px" aria-label="Players sections">${[['stats','Stats'],['roster','Roster']].concat(COMMUNITY?[['photos','Photos']]:[],[['sponsors','Sponsors']]).map(([k,l])=>html`<button class="chip" aria-pressed=${tab===k} onClick=${()=>setTab(k)}>${l}</button>`)}</nav>`:null}
   <section class="sec">
   ${tab==='schedule'?html`<div class="list">${gs.map(g=>{const home=g.home===id,opp=M.sideOf(g,home?'away':'home'),mine=home?g.hs:g.as,th=home?g.as:g.hs,pl=played(g),sp=sponsorLine(M,g);
     return html`<button class="li" onClick=${()=>openGame(g)}><span style="width:64px;flex:none;font-size:12px;font-weight:600;letter-spacing:.8px;color:var(--muted)">${dshort(g.date)}</span><${Logo} id=${opp.id} name=${opp.name}/><span class="grow"><b>${g.siteUnknown?'vs':home?'vs':'at'} ${opp.name}</b><div class="sub">${M.isConf(g)?'Conference':g.post?'':'Non-conference'}${sp?html` · ${sp}`:''}${pickNote(M,g)?html`${M.isConf(g)||!g.post||sp?' · ':''}${pickNote(M,g)}`:null}</div></span>
@@ -720,9 +761,11 @@ async function scoreWeek(S,sport,w){
     if((p.at||0)>kickoff(g)+60000||!played(g))return;
     u.off+=p.ps&&p.ps.length===2?Math.abs(p.ps[0]-g.as)+Math.abs(p.ps[1]-g.hs):PRED_MISS;   // tiebreaker: total distance from the real scores
     if(g.hs===g.as)return;u.of++;if((g.hs>g.as?'home':'away')===p.pick)u.right++});
+  const need=(S.prize||{}).need||0,jc=need?await joinCounts().catch(()=>({})):{};
+  Object.values(U).forEach(u=>{u.joined=(jc[u.uid]||{}).joined||0;u.ok=!need||u.joined>=need});
   const by=(a,b)=>b.right-a.right||a.off-b.off||a.of-b.of||a.name.localeCompare(b.name),rows=Object.values(U).sort(by);
   const done=w.games.filter(played).length,final=done===w.games.length&&rows.length>0,top=rows.length?rows[0].right:0,topOff=rows.length?rows[0].off:0;
-  await DB.set('boards',wid,{sport,week:wid,label:w.label,rows:rows.slice(0,300),players:rows.length,done,games:w.games.length,final,winners:final?rows.filter(r=>r.right===top&&r.off===topOff).map(r=>r.name):[],at:Date.now()});
+  await DB.set('boards',wid,{sport,week:wid,label:w.label,rows:rows.slice(0,300),players:rows.length,done,games:w.games.length,final,winners:final?rows.filter(r=>r.right===top&&r.off===topOff).map(r=>r.name):[],prizeWinners:final?(()=>{const e=rows.filter(r=>r.ok);return e.length?e.filter(r=>r.right===e[0].right&&r.off===e[0].off).map(r=>r.name):[]})():[],need,at:Date.now()});
   const T={};(await DB.list('boards',[['sport','==',sport]])).filter(b=>b.week).forEach(b=>b.rows.forEach(r=>{const t=T[r.uid]=T[r.uid]||{uid:r.uid,name:r.name,right:0,of:0,off:0};t.name=r.name;t.right+=r.right;t.of+=r.of;t.off+=r.off||0}));
   await DB.set('boards',sport+':season',{sport,rows:Object.values(T).sort(by).slice(0,300),at:Date.now()});
   return{players:rows.length,final};
@@ -731,7 +774,7 @@ function BrBoard({b}){const[d]=useLoad(()=>DB.get('boards','br:'+bslug(b)),[b.ti
   return html`${d.final&&d.winners.length?html`<div class="banner"><b>Bracket winner${d.winners.length>1?'s':''}: ${d.winners.join(', ')}</b></div>`:null}<${Board} title="Bracket leaderboard" b=${d} uid=${DB.me.uid} unit="points"/>`}
 function Board({title,b,uid,unit}){
   if(!b||!b.rows||!b.rows.length)return null;const me=b.rows.findIndex(r=>r.uid===uid);
-  return html`<h3 class="eyebrow">${title}</h3><div class="list">${b.rows.slice(0,10).map((r,i)=>html`<div class="li" style=${r.uid===uid?'background:rgba(255,184,28,.08)':''}><span class="num" style="color:var(--muted);width:28px">${i+1}</span><span class="grow"><b>${r.name}</b>${r.off!=null&&!unit?html`<div class="sub">scores off by ${r.off}</div>`:null}</span><span class="pill">${r.right}<span style="font-size:13px;color:var(--muted)">${unit==='points'?' pts':' of '+r.of}</span></span></div>`)}
+  return html`<h3 class="eyebrow">${title}</h3><div class="list">${b.rows.slice(0,10).map((r,i)=>html`<div class="li" style=${r.uid===uid?'background:rgba(255,184,28,.08)':''}><span class="num" style="color:var(--muted);width:28px">${i+1}</span><span class="grow"><b>${r.name}</b>${r.off!=null&&!unit?html`<div class="sub">scores off by ${r.off}${r.ok===false?' · not prize eligible yet':''}</div>`:null}</span><span class="pill">${r.right}<span style="font-size:13px;color:var(--muted)">${unit==='points'?' pts':' of '+r.of}</span></span></div>`)}
     ${me>=10?html`<div class="li" style="background:rgba(255,184,28,.08)"><span class="num" style="color:var(--muted);width:28px">${me+1}</span><span class="grow"><b>${b.rows[me].name}</b> (you)</span><span class="pill">${b.rows[me].right}</span></div>`:null}</div>`;
 }
 function BracketPick({b,name}){
@@ -781,17 +824,22 @@ function Pickem({S,sport}){
     if(n[0]===''||n[1]==='')return;if(!name.trim()){SAY('Type a leaderboard name first.');return}ls.set('pb_name',name.trim());
     const side=n[0]===n[1]?(mine[g.id]||'home'):n[1]>n[0]?'home':'away';setMine(m=>({...m,[g.id]:side}));PICKED(g.id,side);clearTimeout(predict.t);predict.t=setTimeout(()=>savePick(g,side,n),600)};
   const open=w.games.filter(g=>Date.now()<kickoff(g)&&!hasScore(g)),made=w.games.filter(g=>mine[g.id]).length;
-  const shown=w.games.filter(g=>mine[g.id]||(Date.now()<kickoff(g)&&!hasScore(g))),past=M.weeks.indexOf(w)<M.cur;   // games already under way that you did not pick are left out
+  const brGames=new Set((S.brackets||[]).filter(x=>x.sport===sport).flatMap(x=>x.rounds.flatMap(r=>r.games.map(y=>y.game).filter(Boolean))));
+  const shown=w.games.filter(g=>!brGames.has(g.id)&&(mine[g.id]||(Date.now()<kickoff(g)&&!hasScore(g)))),past=M.weeks.indexOf(w)<M.cur;   // playoff games are picked on the bracket   // games already under way that you did not pick are left out
   const right=w.games.filter(g=>played(g)&&g.hs!==g.as&&mine[g.id]===(g.hs>g.as?'home':'away')).length,graded=w.games.filter(g=>played(g)&&mine[g.id]).length;
   const wb=b&&b[0],sb=b&&b[1];
   const side=(g,k)=>{const s=M.sideOf(g,k),lock=Date.now()>=kickoff(g)||hasScore(g),win=played(g)&&g.hs!==g.as&&(g.hs>g.as?'home':'away')===k;
     return html`<button class="pkb" aria-pressed=${mine[g.id]===k} disabled=${lock} onClick=${()=>pick(g,k)}><${Logo} id=${s.id} name=${s.name} size=${36}/><span class="nm">${s.name}</span>${hasScore(g)?html`<span class="pill" style=${win?'':'color:var(--muted)'}>${s.score}</span>`:null}</button>`};
-  const brs=(S.brackets||[]).filter(x=>x.sport===sport);
-  return html`<label class="field">Your leaderboard name<input id="pk-name" value=${name} maxlength="24" onInput=${e=>setName(e.target.value)} placeholder="First name and last initial works"/></label>
+  const brs=(S.brackets||[]).filter(x=>x.sport===sport),inBr=new Set(brs.flatMap(x=>x.rounds.flatMap(r=>r.games.map(y=>y.game).filter(Boolean))));
+  const myRow=wb&&wb.rows?wb.rows.findIndex(r=>r.uid===DB.me.uid):-1;
+  return html`<div class="pkhero"><div class="between"><h2>PICK'EM</h2><span class="note">${M.sp.name} · ${w.label.split(' · ')[0]}</span></div>
+      <div class="pkstat"><div><b>${open.filter(g=>!inBr.has(g.id)).length}</b><span>open games</span></div><div><b>${made}</b><span>your picks</span></div><div><b>${myRow>=0?'#'+(myRow+1):'–'}</b><span>your rank</span></div></div></div>
+    <label class="field">Your leaderboard name<input id="pk-name" value=${name} maxlength="24" onInput=${e=>setName(e.target.value)} placeholder="First name and last initial works"/></label>
+    ${COMMUNITY?html`<${InviteBox} S=${S}/>`:null}
     ${brs.map(x=>html`<${BracketPick} key=${x.title} b=${x} name=${name}/><${BrBoard} b=${x}/>`)}
     ${brs.length?html`<h2 class="eyebrow" style="margin-top:8px">Weekly pick'em</h2>`:null}
     <${WeekPick} weeks=${M.weeks} wk=${Math.min(wk,M.weeks.length-1)} setWk=${setWk} cur=${M.cur}/>
-    ${wb&&wb.final&&wb.winners.length?html`<div class="banner"><b>${w.label.split(' · ')[0]} winner${wb.winners.length>1?'s':''}: ${wb.winners.join(', ')}</b> with ${wb.rows[0].right} of ${wb.rows[0].of} right. ${wb.players} fans played.</div>`:null}
+    ${wb&&wb.final&&wb.winners.length?html`<div class="banner"><b>${w.label.split(' · ')[0]} winner${wb.winners.length>1?'s':''}: ${wb.winners.join(', ')}</b> with ${wb.rows[0].right} of ${wb.rows[0].of} right. ${wb.players} fans played.${wb.need&&(wb.prizeWinners||[]).join()!==wb.winners.join()?html`<br/>Prize goes to ${(wb.prizeWinners||[]).join(', ')||'nobody eligible this week'} (invited ${wb.need}+ friends).`:null}</div>`:null}
     <div class="note">${open.length?'Tap the team you think wins. You can change a pick until that game starts. ':past?'These are the games you picked that week. ':'No games left to pick this week. Tap Upcoming to pick next week. '}${made} of ${w.games.length} picked${graded?' · '+right+' of '+graded+' right so far':''}.</div>
     <div class="grid">${shown.map(g=>{const pl=played(g),ok=pl&&g.hs!==g.as&&mine[g.id]===(g.hs>g.as?'home':'away');
       return html`<div class="card"><div class="meta"><span>${dshort(g.date)} · ${g.time||'TIME TBD'}</span><span class=${pl&&mine[g.id]?(ok?'ok':'no'):''}>${pl?(mine[g.id]?(ok?'YOU GOT IT':'MISSED'):'NO PICK'):g.inprog?'LIVE':Date.now()>=kickoff(g)?'LOCKED':'OPEN'}</span></div>
@@ -870,7 +918,21 @@ function Photos({M,team,favs,openSheet,ver}){
 
 /* ---------- Playoffs ---------- */
 const bslug=b=>b.title.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
-const bwin=x=>x.a.score!=null&&x.b.score!=null&&x.a.score!==x.b.score?(x.a.score>x.b.score?x.a.name:x.b.name):null;
+const bside=x=>x.w||(x.a.score!=null&&x.b.score!=null&&x.a.score!==x.b.score?(x.a.score>x.b.score?'a':'b'):null);
+const bwin=x=>{const w=bside(x);return w?x[w].name:null};
+/* Brackets are kept by hand only as structure (seeds, rounds). Who advances, dates and scores are filled in from the
+   schedule, so a bracket updates itself as MaxPreps posts results. */
+function resolveBracket(S,b){
+  const R=clone(b.rounds),tn={};S.teams.forEach(t=>tn[t.id]=t.name);
+  const nm=(g,k)=>g[k]?tn[g[k]]:g.outside,pool=S.games.filter(g=>g.sport===b.sport&&(g.level||'v')==='v'&&g.date>=(b.start||'0'));
+  R.forEach((rd,r)=>rd.games.forEach((x,i)=>{
+    if(r>0&&R[r-1].games.length===2*rd.games.length)[0,1].forEach(k=>{const sd=k?'b':'a';if(!x[sd].name){const f=R[r-1].games[2*i+k],w=bside(f);if(w){const c=f[w];x[sd]={seed:c.seed,id:c.id,name:c.name}}}});
+    if(x.a.name&&x.b.name&&(x.a.score==null||x.b.score==null)){
+      const m=pool.find(g=>{const n=[nm(g,'home'),nm(g,'away')];return n.includes(x.a.name)&&n.includes(x.b.name)&&(!x.date||Math.abs(D(g.date)-D(x.date))<=3*864e5)});
+      if(m){const ah=nm(m,'home')===x.a.name;x.date=m.date;x.time=m.time;x.site='at '+nm(m,'home');x.game=m.id;if(hasScore(m)&&!m.inprog){x.a.score=ah?m.hs:m.as;x.b.score=ah?m.as:m.hs}}
+    }}));
+  return{...b,rounds:R};
+}
 /* Bracket pick'em: pick every game, later rounds fill in from your own earlier picks. Each round is worth double the one before. */
 function bracketSlots(b,picks){
   const R=b.rounds,key=(r,i)=>'br:'+bslug(b)+':r'+r+'g'+i,fed=r=>r>0&&R[r-1].games.length===2*R[r].games.length;
@@ -880,9 +942,9 @@ function bracketSlots(b,picks){
 const BSHORT={'Idaho Falls':'Id. Falls','Thunder Ridge':'Thunder R.','Canyon Ridge':'Canyon R.'};   // brackets are narrow on a phone
 function Bracket({M,b,go}){
   const R=b.rounds,linked=i=>i<R.length-1&&R[i].games.length===2*R[i+1].games.length;
-  const side=(s,o)=>html`<div class=${'bs'+(s.score!=null&&o.score!=null&&s.score<o.score?' lose':'')}>${s.seed?html`<i>${s.seed}</i>`:null}<span class="nm" title=${s.name||''}>${s.name?(BSHORT[s.name]||s.name):'TBD'}</span>${s.score!=null?html`<b>${s.score}</b>`:null}</div>`;
-  const match=x=>{const done=x.a.score!=null&&x.b.score!=null;
-    return html`<div class="bm"><div class="bd">${done?'Final · ':''}${x.date?nice(x.date):'Date TBD'}${!done&&x.time?' · '+x.time:''}</div>${side(x.a,x.b)}${side(x.b,x.a)}</div>`};
+  const side=(s,o,x)=>html`<div class=${'bs'+(bwin(x)&&bwin(x)!==s.name?' lose':'')}>${s.seed?html`<i>${s.seed}</i>`:null}<span class="nm" title=${s.name||''}>${s.name?(BSHORT[s.name]||s.name):'TBD'}</span>${s.score!=null?html`<b>${s.score}</b>`:null}</div>`;
+  const match=x=>{const done=!!bwin(x)||x.a.score!=null&&x.b.score!=null;
+    return html`<div class="bm"><div class="bd">${done?'Final · ':''}${x.date?nice(x.date):'Date TBD'}${!done&&x.time?' · '+x.time:''}</div>${side(x.a,x.b,x)}${side(x.b,x.a,x)}</div>`};
   const pairs=g=>{const o=[];for(let i=0;i<g.length;i+=2)o.push(g.slice(i,i+2));return o};
   return html`<div class="bk" style=${'grid-template-columns:repeat('+R.length+',minmax(0,1fr))'}>${R.map((r,i)=>html`<div class="br"><div class="bh">${r.name}</div>
     <div class=${'bc'+(i>0&&linked(i-1)?' fed':'')}>${linked(i)?pairs(r.games).map(p=>html`<div class="bp">${p.map(match)}</div>`):r.games.map(match)}</div></div>`)}</div>`;
@@ -949,6 +1011,10 @@ function AdmFans({M,update}){
   ${w?html`<${WeekPick} weeks=${Mv.weeks} wk=${Math.min(wk,Mv.weeks.length-1)} setWk=${setWk} cur=${Mv.cur}/>
   <div class="row" style="flex-wrap:wrap"><button class="btn pri" disabled=${busy} onClick=${score}>Update ${w.label.split(' · ')[0]} leaderboard</button><span class="note">${w.games.filter(played).length} of ${w.games.length} games final. When all are final the winner is announced on the Pick'em tab.</span></div>`:html`<div class="note">No schedule for this sport yet.</div>`}
   ${(S.brackets||[]).filter(x=>x.sport===M.sport).map(x=>html`<div class="row" style="flex-wrap:wrap;margin-top:6px"><button class="btn" disabled=${busy} onClick=${async()=>{setBusy(true);try{const r=await scoreBracket(x);SAY(r.players?'Bracket leaderboard updated: '+r.players+' fans'+(r.final?', winner announced.':'.'):'Nobody has filled out this bracket yet.')}catch(e){console.warn(e);SAY('Could not update the bracket leaderboard.')}setBusy(false)}}>Update bracket leaderboard</button><span class="note">${x.title}</span></div>`)}
+  <h2 class="eyebrow" style="margin-top:12px">Prizes and invites</h2>
+  <div class="formrow"><label class="field">Friends who must join with a fan's link before they can win a prize<input id="pz-need" inputmode="numeric" value=${(S.prize||{}).need||0} onInput=${e=>{const n=Math.min(50,parseInt(e.target.value.replace(/[^0-9]/g,''),10)||0);update(s=>{s.prize={need:n}})}}/></label></div>
+  <div class="note">0 means anyone can win. The leaderboard marks who is eligible, and the winner banner names the prize winner separately.</div>
+  <${AdmInvites}/>
   <h2 class="eyebrow" style="margin-top:12px">Player of the week</h2>
   <label class="field">Title<input id="pl-title" value=${pf.title} onInput=${e=>setPf({...pf,title:e.target.value})}/></label>
   <div class="formrow"><label class="field">Player<input id="pl-name" value=${nf.name} onInput=${e=>setNf({...nf,name:e.target.value})}/></label><label class="field">Team<select id="pl-team" value=${nf.team} onChange=${e=>setNf({...nf,team:e.target.value})}>${S.teams.map(t=>html`<option value=${t.id}>${t.name}</option>`)}</select></label><label class="field">What they did<input id="pl-line" value=${nf.line} onInput=${e=>setNf({...nf,line:e.target.value})} placeholder="3 TDs, 142 yards rushing"/></label>
@@ -961,6 +1027,14 @@ function AdmFans({M,update}){
   ${rg?html`<label class="field">Recap<textarea id="rc-text" style="font-family:inherit;font-size:15px;min-height:120px" value=${rt} onInput=${e=>setRt(e.target.value)}></textarea></label>
   <div class="row" style="flex-wrap:wrap"><button class="btn pri" onClick=${()=>{update(s=>{s.recaps[rg]=rt.trim()});SAY('Recap saved.')}}>Save my recap</button>${S.recaps[rg]?html`<button class="btn" onClick=${()=>{update(s=>{delete s.recaps[rg]});SAY('Back to the automatic recap.');setRg('')}}>Use the automatic one</button>`:null}</div>`
   :html`<div class="note">Every finished game already has a short recap written from the score. Pick a game to write your own.</div>`}`;
+}
+function AdmInvites(){
+  const[d]=useLoad(async()=>{const[inv,jc]=await Promise.all([DB.list('invites'),joinCounts()]);const ids=new Set(inv.map(i=>i.id).concat(Object.keys(jc)));
+    return[...ids].map(id=>{const i=inv.find(x=>x.id===id)||{},c=jc[id]||{joined:0,active:0};return{id,name:i.name||'(no name yet)',sent:i.sent||0,joined:c.joined,active:c.active}}).sort((a,b)=>b.joined-a.joined||b.sent-a.sent)},[]);
+  if(d===null)return html`<div class="note">Loading invites…</div>`;if(!d)return html`<div class="note">Invites could not be loaded. If you have not pasted the newest database rules yet, do that first.</div>`;
+  if(!d.length)return html`<div class="note">Nobody has sent an invite yet.</div>`;
+  return html`<div class="tablebox"><table><thead><tr><th>Fan</th><th>Sent</th><th>Joined</th><th>Active</th></tr></thead><tbody>${d.map(r=>html`<tr><td>${r.name}</td><td>${r.sent}</td><td>${r.joined}</td><td>${r.active}</td></tr>`)}</tbody></table></div>
+    <div class="note">Sent counts taps on the invite button. Joined counts new phones that opened a fan's link. Active means they then followed a team or made a pick.</div>`;
 }
 function AdmReach({M}){
   const days=useMemo(()=>{const o=[];for(let i=0;i<14;i++){const d=new Date();d.setDate(d.getDate()-i);o.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'))}return o},[]);
@@ -1077,7 +1151,7 @@ function App(){
   const pref=useRef(patch),saveT=useRef(null),toastT=useRef(null);
   const[picks,setPicks]=useState({});const[hidden,setHidden]=useState(loadHidden);
   const toggleSport=id=>setHidden(h=>{const n=h.includes(id)?h.filter(x=>x!==id):h.concat(id);ls.set('pb_hide_sports',JSON.stringify(n));return n});
-  useEffect(()=>{PICKED=(g,k)=>setPicks(p=>({...p,[g]:k}));if(COMMUNITY)dbReady.then(()=>DB.list('picks',[['uid','==',DB.me.uid]])).then(r=>{const o={};r.forEach(x=>{if(x.pick)o[x.game]=x.pick});setPicks(p=>({...o,...p}))}).catch(()=>{});
+  useEffect(()=>{noteJoin();PICKED=(g,k)=>{setPicks(p=>({...p,[g]:k}));markActive()};if(COMMUNITY)dbReady.then(()=>DB.list('picks',[['uid','==',DB.me.uid]])).then(r=>{const o={};r.forEach(x=>{if(x.pick)o[x.game]=x.pick});setPicks(p=>({...o,...p}))}).catch(()=>{});
     if(!ls.get('pb_guide')&&location.hash!=='#admin'){ls.set('pb_guide','1');setSheet({k:'guide'})}},[]);
   const[adm,setAdm]=useState(SHOW_ADMIN);useEffect(()=>{const h=()=>{if(location.hash==='#admin')setAdm(true)};window.addEventListener('hashchange',h);return()=>window.removeEventListener('hashchange',h)},[]);
   const setPatch=p=>{pref.current=p;setPatchRaw(p);ls.set('pb_patch',JSON.stringify(p))};
@@ -1092,7 +1166,7 @@ function App(){
   const update=fn=>{const n=applyPatch(SEED,pref.current,null);fn(n);const p=derivePatch(n);setPatch(p);
     clearTimeout(saveT.current);saveT.current=setTimeout(()=>{saveT.current=null;dbReady.then(()=>DB.set('state','admin',pref.current)).catch(e=>{console.warn(e);SAY('That change did not save for everyone. Check your connection.')})},700)};
   const reset=()=>{setPatch({});dbReady.then(()=>DB.set('state','admin',{})).catch(()=>{})};
-  const toggle=id=>setFavs(f=>{const n=f.includes(id)?f.filter(x=>x!==id):f.concat(id);ls.set(FAVKEY,JSON.stringify(n));return n});
+  const toggle=id=>setFavs(f=>{const n=f.includes(id)?f.filter(x=>x!==id):f.concat(id);ls.set(FAVKEY,JSON.stringify(n));if(n.length)markActive();return n});
   const go=v=>{setView(v);try{window.scrollTo(0,0)}catch(e){}};
   const openGame=g=>setSheet({k:'game',id:g.id}),close=()=>setSheet(null),bump=()=>setVer(v=>v+1);
   const tv=view.v==='team'?M.T[view.id]:null,th=teamTheme(tv);
