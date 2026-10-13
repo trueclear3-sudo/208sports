@@ -6,6 +6,7 @@ Runs on a schedule in GitHub Actions. Standard library only.
 
     python3 source/updater/update.py              # pull from MaxPreps, rebuild if anything changed
     python3 source/updater/update.py --from-cache # redo the merge from the last pull (no network)
+    python3 source/updater/update.py --tonight    # game night: re-read only games that started and have no score
 
 Safety rules, in order of importance:
   1. A page that fails to load never erases anything: that team's existing games are kept.
@@ -164,6 +165,38 @@ def pull():
     pull_stats(out)
     return out
 
+def pull_tonight(pulled):
+    """Game-night mode: re-read only the schedule pages of games that have started and have no score yet.
+    Everything else comes from the last full pull. Returns how many pages were read."""
+    from zoneinfo import ZoneInfo
+    now = datetime.datetime.now(ZoneInfo("America/Boise")).replace(tzinfo=None)
+    prev = load("data.json", {"games": []})
+    keys = []
+    for g in prev.get("games", []):
+        if g.get("hs") is not None: continue
+        try: day = datetime.date.fromisoformat(g["date"])
+        except Exception: continue
+        if day not in (now.date(), now.date() - datetime.timedelta(days=1)): continue
+        start = datetime.datetime.combine(day, datetime.time(19, 0))
+        m = re.match(r"(\d+):(\d+) (AM|PM)$", g.get("time") or "")
+        if m: start = datetime.datetime.combine(day, datetime.time(int(m.group(1)) % 12 + (12 if m.group(3) == "PM" else 0), int(m.group(2))))
+        if now < start + datetime.timedelta(minutes=40) or now > start + datetime.timedelta(hours=8): continue
+        tid = g.get("home") or g.get("away")
+        key = "%s|%s|%s" % (g.get("sport", "football"), g.get("level", "v"), tid)
+        if tid and key in pulled and key not in keys: keys.append(key)
+    for key in keys:
+        sp, lv, tid = key.split("|")
+        status, page = fetch(TEAMS[tid]["base"] + SPORTS[sp]["paths"][lv] + "schedule/")
+        try:
+            if status != 200: raise ValueError("could not load (%s)" % str(page)[:80])
+            rows, stated = parse_page(page)
+            pulled[key] = dict(ok=True, rows=rows, stated=stated)
+            print("ok  ", key, len(rows))
+        except Exception as e:
+            print("FAIL", key, str(e)[:120])          # keep the last good copy of this page
+        time.sleep(0.6)
+    return len(keys)
+
 # ---------------------------------------------------------------- putting games together
 def dnum(iso): return datetime.date.fromisoformat(iso).toordinal()
 
@@ -248,6 +281,9 @@ def main():
     cache = os.path.join(HERE, "last-pull.json")
     if "--from-cache" in sys.argv:
         pulled = json.load(open(cache))
+    elif "--tonight" in sys.argv:
+        pulled = json.load(open(cache))
+        if not pull_tonight(pulled): print("No games waiting on a score right now."); return
     else:
         pulled = pull()
     pages = len(pulled); failed = [k for k, v in pulled.items() if not v["ok"]]
@@ -343,6 +379,7 @@ def main():
     subprocess.run([sys.executable, "build.py"], cwd=SRC, check=True)
     shutil.copy(os.path.join(SRC, "dist", "index.html"), os.path.join(ROOT, "index.html"))
     shutil.copy(os.path.join(SRC, "dist", "version.txt"), os.path.join(ROOT, "version.txt"))
+    shutil.copy(os.path.join(SRC, "dist", "sw.js"), os.path.join(ROOT, "sw.js"))
     summary = "%d new or changed results" % len(changes) if changes else "schedule or notes changed"
     open(os.path.join(HERE, "last-run.txt"), "w").write(body["pulled"] + "\n" + summary + "\n" + "\n".join(changes[:200]) + "\n")
     print("\nUpdated: " + summary); [print("  ", c) for c in changes[:60]]

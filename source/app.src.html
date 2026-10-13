@@ -211,7 +211,7 @@ const BRAND=/*BRAND*/;
 const SHOW_ADMIN=/*ADMIN*/true; // the published site only shows the admin gear at  .../#admin
 const FB=/*FIREBASE*/null;      // filled in from source/firebase.json once the shared database exists
 const PREVIEW=/*PREVIEW*/true;  // true only in the Claude preview build
-const COMMUNITY=!!FB||PREVIEW;  // reporting, pick'em, voting and photos need the shared database
+const COMMUNITY=!!FB||PREVIEW;  // reporting, pick'em and voting need the shared database
 const SITE='https://trueclear3-sudo.github.io/208sports/';
 const BUILD=/*BUILD*/'';
 /* Phones keep an old copy of the page for a while. Check for a newer version when the app opens or comes back
@@ -228,12 +228,12 @@ function loadFavs(){const s=ls.json(FAVKEY);return Array.isArray(s)?s:[]}
    One small interface with two engines behind it. With a Firebase config the app talks to Firestore, so every phone
    sees the same thing. Without one it keeps everything in this browser (the old behavior, and what the preview uses).
    Collections: state/admin (the owner's edits), state/live (scores from trusted sources), reports, applications,
-   trusted, picks, boards, votes, photos + photoFull, flags, visits, stats. */
+   trusted, repcodes, picks, boards, votes, joins, invites, push, visits, stats. */
 const deepMerge=(a,b)=>{const o={...a};Object.keys(b).forEach(k=>{o[k]=b[k]&&typeof b[k]==='object'&&!Array.isArray(b[k])&&a&&a[k]&&typeof a[k]==='object'?deepMerge(a[k],b[k]):b[k]});return o};
 const deepAdd=(a,b)=>{const o={...(a||{})};Object.keys(b).forEach(k=>{o[k]=typeof b[k]==='number'?(o[k]||0)+b[k]:deepAdd(o[k],b[k])});return o};
 const newId=()=>String(1e13-Date.now()).padStart(13,'0')+Math.random().toString(36).slice(2,6); // sorts newest first
 function localDB(){
-  const K='pb_db1',VOLATILE=['photos','photoFull'];let mem=ls.json(K)||{};
+  const K='pb_db1',VOLATILE=['reportPics'];let mem=ls.json(K)||{};
   const save=()=>{const o={};Object.keys(mem).forEach(c=>{if(!VOLATILE.includes(c))o[c]=mem[c]});ls.set(K,JSON.stringify(o))};
   let uid=ls.get('pb_uid');if(!uid){uid='u'+Math.random().toString(36).slice(2,12);ls.set('pb_uid',uid)}
   const col=c=>mem[c]=mem[c]||{},subs=[];
@@ -305,7 +305,7 @@ function derivePatch(S){
     Object.keys(t.stats||{}).forEach(sp=>{if(J(t.stats[sp])!==J((o.stats||{})[sp]||{}))p.stats[t.id+'|'+sp]=t.stats[sp]})});
   return clone(p);
 }
-let SAY=()=>{},PICKED=()=>{};   // SAY: small pop-up message. PICKED: tells the app about a new pick so schedules can show it.   // small pop-up message, set by App
+let SAY=()=>{},PICKED=()=>{},GUIDE_NEXT=false;   // SAY: small pop-up message. PICKED: tells the app about a new pick so schedules can show it.   // small pop-up message, set by App
 const myName=()=>ls.get('pb_name')||'';
 /* Reach numbers for schools and sponsors: counted in small batches so a busy night stays inside the free database limits. */
 const pend={},seen=new Set();let pendT;
@@ -337,7 +337,7 @@ function Friends({S,sport,M}){
     if(mine&&mine.ref)people.unshift({uid:mine.ref,name:null,how:'invited you'});
     return people.map(p=>{const w=row(boardW,p.uid),sea=row(boardS,p.uid);return{...p,name:p.name||(sea&&sea.name)||(w&&w.name)||null,last:w?w.right+'-'+(w.of-w.right):null,season:sea?sea.right+'-'+(sea.of-sea.right):null}});
   },[sport,pwid]);
-  if(!d||!d.length)return html`<div class="card"><b>Your friends</b><div class="note">Friends who join with your invite link show up here with their records, so you can see how you stack up.</div></div>`;
+  if(!d||!d.length)return null;
   return html`<h3 class="eyebrow">Your friends</h3><div class="tablebox"><table><thead><tr><th>Friend</th><th>Last week</th><th>Season</th></tr></thead><tbody>
     ${d.map(p=>html`<tr><td><b>${p.name||'Name not set yet'}</b><div class="sub" style="font-size:12px;color:var(--muted)">${p.how}</div></td><td>${p.last||'–'}</td><td>${p.season||'–'}</td></tr>`)}</tbody></table></div>
     <div class="note">Friends' records come from the leaderboard, which updates after each week's games.</div>`;
@@ -435,12 +435,27 @@ const Ico={
   plus:html`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>`,
   back:html`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>`,
   share:html`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M8 7l4-4 4 4M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>`,
+  bell:html`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15zM10 20a2 2 0 0 0 4 0"/></svg>`,
   camera:html`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>`,
   heart:html`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.600-7 10-7 10z"/></svg>`
 };
+/* A sport shows up two weeks before its first varsity game and drops off ten days after its last one (playoffs included).
+   Out of season, the next sport to start is shown so the app is never empty. */
+const SEASON_CACHE=new WeakMap();
+function seasonIds(S){
+  if(SEASON_CACHE.has(S))return SEASON_CACHE.get(S);
+  const t=todayISO(),add=(iso,n)=>{const d=D(iso);d.setDate(d.getDate()+n);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+  const on=S.sports.filter(x=>x.on),span={};
+  on.forEach(x=>{const ds=S.games.filter(g=>(g.sport||'football')===x.id&&(g.level||'v')==='v').map(g=>g.date);
+    (S.brackets||[]).filter(b=>b.sport===x.id).forEach(b=>{if(b.start)ds.push(b.start);b.rounds.forEach(r=>r.games.forEach(g=>{if(g.date)ds.push(g.date)}))});
+    if(ds.length){ds.sort();span[x.id]=[ds[0],ds[ds.length-1]]}});
+  let ids=on.filter(x=>span[x.id]&&t>=add(span[x.id][0],-14)&&t<=add(span[x.id][1],10)).map(x=>x.id);
+  if(!ids.length){const next=on.filter(x=>span[x.id]&&span[x.id][0]>t).sort((a,b)=>span[a.id][0]<span[b.id][0]?-1:1);ids=next.length?next.filter(x=>span[x.id][0]===span[next[0].id][0]).map(x=>x.id):on.map(x=>x.id)}
+  SEASON_CACHE.set(S,ids);return ids;
+}
 function Sports({M,setSport,all,edit}){
-  const hid=all?[]:(M.hidden||[]);
-  return html`<div class="chips" role="group" aria-label="Sport">${M.S.sports.filter(x=>x.on&&(M.sport===x.id||!hid.includes(x.id))).map(x=>html`<button class="chip" aria-pressed=${M.sport===x.id} onClick=${()=>setSport(x.id)}>${x.name}</button>`)}${edit?html`<button class="chip" style="border-style:dashed;color:var(--muted)" onClick=${edit}>${hid.length?'+ '+hid.length+' hidden':'Edit sports'}</button>`:null}</div>`;
+  const hid=all?[]:(M.hidden||[]),cur=all?M.S.sports.map(x=>x.id):seasonIds(M.S);
+  return html`<div class="chips" role="group" aria-label="Sport">${M.S.sports.filter(x=>x.on&&cur.includes(x.id)&&(M.sport===x.id||!hid.includes(x.id))).map(x=>html`<button class="chip" aria-pressed=${M.sport===x.id} onClick=${()=>setSport(x.id)}>${x.name}</button>`)}${edit&&cur.length>1?html`<button class="chip" style="border-style:dashed;color:var(--muted)" onClick=${edit}>${hid.filter(h=>cur.includes(h)).length?'+ '+hid.filter(h=>cur.includes(h)).length+' hidden':'Edit sports'}</button>`:null}</div>`;
 }
 function WeekPick({weeks,wk,setWk,cur}){
   const n=weeks.length;if(!n)return null;const mode=wk<cur?'past':wk>cur?'next':'now';
@@ -451,7 +466,7 @@ function WeekPick({weeks,wk,setWk,cur}){
 }
 const BAR=[['scores','Scores',html`<rect x="3" y="5" width="18" height="14" rx="1"/><path d="M12 5v14M7 10v4M17 10v4"/>`],['teams','Teams',html`<path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6z"/>`],['standings','Standings',html`<path d="M5 20V10M12 20V4M19 20v-7"/>`],
   ['schedule','Schedule',html`<rect x="3.5" y="5" width="17" height="15" rx="1.5"/><path d="M3.5 10h17M8 3v4M16 3v4M7.5 14h2M11 14h2M14.5 14h2M7.5 17h2M11 17h2"/>`],['picks',"Pick'em",html`<path d="M4 6h10M4 12h10M4 18h10"/><path d="M17 5l1.5 1.5L21 4M17 11l1.5 1.5L21 10M17 17l1.5 1.5L21 16"/>`],['fans','Fans',html`<circle cx="9" cy="9" r="3.2"/><circle cx="17" cy="10" r="2.4"/><path d="M3 19c0-3 3-5 6-5s6 2 6 5M15 15c3-.5 6 1 6 4"/>`]];
-const FAN=['players','photos'];
+const FAN=['players'];
 // Inside a school the bottom bar switches that school's sections instead of jumping back to all schools.
 const TEAMTAB={scores:'scores',schedule:'schedule',standings:'standings',picks:'picks',fans:'stats'};
 const barOfTeamTab=t=>({scores:'scores',schedule:'schedule',standings:'standings',picks:'picks'})[t]||'players';
@@ -483,7 +498,7 @@ function GameCard({M,g,go,open}){
   return html`<button class="card" onClick=${()=>open(g)} aria-label=${a.name+' at '+h.name}>
     <div class="meta"><span>${M.level==='v'?'':LV[M.level]+' '}${M.sp.name}${M.isConf(g)?' · Conf':''}</span><span class=${st.live?'live':st.up?'up':''}>${st.t}</span></div>
     ${rowOf(first[0],first[1])}${rowOf(first[1],first[0])}
-    <div class="spon">${sp||html`${g.siteUnknown?'Site to confirm':'at '+h.name} · Matchup sponsor open`}${pickNote(M,g)?html`<div style="font-weight:600;padding-top:4px">${pickNote(M,g)}</div>`:null}</div>
+    <div class="spon">${sp||(g.siteUnknown?'Site to confirm':'at '+h.name)}${pickNote(M,g)?html`<div style="font-weight:600;padding-top:4px">${pickNote(M,g)}</div>`:null}</div>
   </button>`;
 }
 function GameSheet({M,g,go,onClose,openSheet}){
@@ -498,21 +513,20 @@ function GameSheet({M,g,go,onClose,openSheet}){
       ${canReport?html`<button class="btn" onClick=${()=>openSheet({k:'report',id:g.id})}>${pl?'Report a correction':'Report score'}</button>`:null}</div>
     ${rc?html`<h3 class="eyebrow">Recap</h3><div class="card"><div>${rc.text}</div>${rc.auto?html`<div class="note">Written automatically from the scores in the app.</div>`:null}</div>`:null}
     <div class="note">${g.siteUnknown?'Both schools list this as a home game. Site to confirm.':'Played at '+h.name}${M.isConf(g)?' · Conference game':g.post?'':' · Non-conference'}</div>
-    <h3 class="eyebrow">Matchup sponsor</h3>
-    ${sp?html`<div class="card"><div>${sp}</div></div>`:html`<div class="slot"><strong>This game is open</strong><span>One business can sponsor the matchup, and the winning school's boosters get the money. Or each team can have its own sponsor.</span></div>`}
+    ${sp?html`<h3 class="eyebrow">Matchup sponsor</h3><div class="card"><div>${sp}</div></div>`:null}
   <//>`;
 }
 function Standings({M,conf,me,go}){
   const rows=M.standings(conf);
   return html`<div class="tablebox"><table><thead><tr><th>${conf}</th><th>Conf</th><th>All</th><th>${M.vb?'SW':M.soccer?'GF':'PF'}</th><th>${M.vb?'SL':M.soccer?'GA':'PA'}</th></tr></thead><tbody>
-    ${rows.map(({t,r})=>html`<tr class=${t.id===me?'me':''}><td><button class="tbtn" onClick=${()=>go({v:'team',id:t.id})}><${Logo} id=${t.id} size=${28}/>${t.name}</button></td><td>${r.cf}</td><td>${r.all}</td><td>${r.pf}</td><td>${r.pa}</td></tr>`)}
+    ${rows.map(({t,r})=>html`<tr class=${(Array.isArray(me)?me.includes(t.id):t.id===me)?'me':''}><td><button class="tbtn" onClick=${()=>go({v:'team',id:t.id})}><${Logo} id=${t.id} size=${28}/>${t.name}</button></td><td>${r.cf}</td><td>${r.all}</td><td>${r.pf}</td><td>${r.pa}</td></tr>`)}
   </tbody></table></div>`;
 }
 function FavSheet({M,favs,toggle,onClose,toggleSport}){
-  const hid=M.hidden||[],on=M.S.sports.filter(x=>x.on),left=on.filter(x=>!hid.includes(x.id)).length;
+  const hid=M.hidden||[],cur=seasonIds(M.S),on=M.S.sports.filter(x=>x.on&&cur.includes(x.id)),left=on.filter(x=>!hid.includes(x.id)).length;
   return html`<${Sheet} title="My teams and sports" onClose=${onClose}>
-    <h3 class="eyebrow">My sports</h3><div class="note">Sports you turn off are tucked away from the sport buttons. You can bring them back here any time.</div>
-    <div class="list">${on.map(x=>{const f=!hid.includes(x.id);return html`<div class="li"><span class="grow"><b>${x.name}</b></span><button class=${'btn sm'+(f?' pri':'')} aria-pressed=${f} disabled=${f&&left<2} onClick=${()=>toggleSport(x.id)}>${f?'Showing':'Hidden'}</button></div>`})}</div>
+    ${on.length>1?html`<h3 class="eyebrow">My sports</h3><div class="note">Sports in season right now. Turn off any you don't follow. Other sports show up on their own two weeks before their season starts.</div>
+    <div class="list">${on.map(x=>{const f=!hid.includes(x.id);return html`<div class="li"><span class="grow"><b>${x.name}</b></span><button class=${'btn sm'+(f?' pri':'')} aria-pressed=${f} disabled=${f&&left<2} onClick=${()=>toggleSport(x.id)}>${f?'Showing':'Hidden'}</button></div>`})}</div>`:null}
     <h3 class="eyebrow">My teams</h3>
     <div class="list">${M.S.teams.map(t=>html`<div class="li"><${Logo} id=${t.id} size=${36}/><span class="grow"><b>${t.name}</b><div class="sub">${t.mascot}</div></span><button class=${'btn sm'+(favs.includes(t.id)?' pri':'')} aria-pressed=${favs.includes(t.id)} onClick=${()=>toggle(t.id)}>${favs.includes(t.id)?'Following':'Follow'}</button></div>`)}</div><//>`;
 }
@@ -529,19 +543,26 @@ function SearchSheet({M,go,onClose,setLevel,setSport}){
     </div>`:null}<//>`;
 }
 
-function Home({M,favs,go,tab,setTab,openGame,openFavs,level,setLevel,setSport,openSheet,ver}){
+function RepToday({M,favs,openSheet}){
+  const[all,setAll]=useState(false);const mine=g=>favs.includes(g.home)||favs.includes(g.away)?0:1;
+  const d=todayISO(),gs0=M.S.games.filter(g=>g.date===d).sort((a,b)=>mine(a)-mine(b)||((a.level||'v')==='v'?0:1)-((b.level||'v')==='v'?0:1)||kickoff(a)-kickoff(b));if(!gs0.length)return null;const gs=all?gs0:gs0.slice(0,3);
+  const nm=(g,w)=>g[w]?M.T[g[w]].name:g.outside,spn=g=>{const x=M.S.sports.find(y=>y.id===(g.sport||'football'));return(x?x.name:'')+((g.level||'v')==='v'?'':' '+LV[g.level])};
+  return html`<section class="sec" style="padding-top:0"><h2 class="eyebrow">Report today's scores</h2><div class="list">${gs.map(g=>html`<button class="li" onClick=${()=>openSheet({k:'report',id:g.id})}><span class="grow"><b>${nm(g,'away')} at ${nm(g,'home')}</b><div class="sub">${spn(g)} · ${hasScore(g)?(g.inprog?g.live.st+' ':'Final ')+g.as+'-'+g.hs:g.time||'Time TBD'}</div></span><span class="btn sm pri">Report</span></button>`)}</div>${gs0.length>3?html`<button class="link" onClick=${()=>setAll(!all)}>${all?'Show fewer':'All '+gs0.length+' games today'}</button>`:null}</section>`;
+}
+function Home({M,me,favs,go,tab,setTab,openGame,openFavs,level,setLevel,setSport,openSheet,ver}){
   const[wk,setWk]=useState(M.cur);const[cat0,setCat]=useState('');useEffect(()=>{setWk(M.cur)},[M.sport,M.level]);const cats=catsFor(M,M.sport),cat=cats.some(c=>c[0]===cat0)?cat0:(cats[0]||[''])[0];
   const mine=useMemo(()=>{const out=[];favs.forEach(id=>{const gs=M.gamesOf(id);const last=[...gs].reverse().find(played);const next=gs.find(g=>!played(g)&&g.date>=todayISO());[last,next].forEach(g=>{if(g&&!out.includes(g))out.push(g)})});return out.sort((a,b)=>a.date<b.date?-1:1)},[M,favs]);
   const leaders=M.S.teams.flatMap(t=>(((t.stats||{})[M.sport]||{})[cat]||[]).map(x=>({...x,t}))).sort((a,b)=>((SEED.statLow||[]).includes(cat)||/Against Average/i.test(cat))?a.v-b.v:b.v-a.v).slice(0,15);
+  const fconf=favs.map(id=>(M.T[id]||{}).conf).filter(Boolean),crank=c=>{const i=fconf.indexOf(c);return i<0?99:i},confOrder=Object.keys(M.confs).sort((a,b)=>crank(a)-crank(b)||a.localeCompare(b));
   const cinfo=cats.find(c=>c[0]===cat)||['','',''],polls=COMMUNITY?(M.S.polls||[]):[],poll=polls.find(x=>x.open)||polls[0];
-  const TABS=[['teams','Teams'],['scores','Scores'],['standings','Standings'],['players','Players'],['playoffs','Playoffs']].concat(COMMUNITY?[['picks',"Pick'em"],['photos','Photos']]:[]);
   return html`
 
   <section class="sec"><div class="between"><h2 class="eyebrow">My teams</h2><button class="link" onClick=${openFavs}>Edit</button></div>
     <div class="myteams">${favs.map(id=>M.T[id]&&html`<button class="mt" onClick=${()=>go({v:'team',id})}><${Logo} id=${id} size=${60}/><span>${M.T[id].name}</span></button>`)}
       <button class="mt" aria-label="Add a favorite team" onClick=${openFavs} style="color:var(--muted)"><span class="add-ring">${Ico.plus}</span><span>Add</span></button></div></section>
-  ${COMMUNITY&&FAN.includes(tab)?html`<div class="seg" role="group" aria-label="Fans">${[['players','Players'],['photos','Photos']].map(([k,l])=>html`<button class="chip" aria-pressed=${tab===k} onClick=${()=>setTab(k)}>${l}</button>`)}</div>`:null}
   <section class="sec" aria-label="Sport and level"><${Sports} M=${M} setSport=${setSport} edit=${openFavs}/>${tab==='picks'?null:html`<${Levels} level=${level} setLevel=${setLevel} M=${M}/>`}</section>
+  ${tab==='scores'?html`<${AlertCard} favs=${favs} openSheet=${openSheet}/>`:null}
+  ${tab==='scores'&&me&&me.trusted?html`<${RepToday} M=${M} favs=${favs} openSheet=${openSheet}/>`:null}
   ${tab==='scores'&&COMMUNITY?html`<${PickPromo} S=${M.S} sport=${M.sport} go=${()=>setTab('picks')}/>`:null}
   ${tab==='scores'&&poll&&poll.open?html`<button class="banner between" style="width:100%;text-align:left;margin-bottom:14px;color:var(--fg)" onClick=${()=>setTab('players')}><span><b>Vote: ${poll.title}</b><br/>${poll.noms.length} nominees. One vote a day.</span><span class="btn sm pri">Vote</span></button>`:null}
   ${tab==='scores'?html`
@@ -556,12 +577,11 @@ function Home({M,favs,go,tab,setTab,openGame,openFavs,level,setLevel,setSport,op
       <${WeekPick} weeks=${M.weeks} wk=${Math.min(wk,M.weeks.length-1)} setWk=${setWk} cur=${M.cur}/>
       <div class="grid">${(M.weeks[Math.min(wk,M.weeks.length-1)]||{games:[]}).games.map(g=>html`<${GameCard} M=${M} g=${g} go=${go} open=${openGame}/>`)}</div></section>`:null}
   ${(tab==='scores'||tab==='schedule')&&fmtStamp(SEED.pulled)?html`<div class="note">Scores from MaxPreps, last updated ${fmtStamp(SEED.pulled)}.</div>`:null}
-  ${tab==='teams'?Object.keys(M.confs).sort().map(c=>html`<section class="sec" style="padding-top:0"><h2 class="eyebrow">${c}</h2><div class="teamgrid">${M.confs[c].map(t=>{const r=M.rec(t.id);return html`<button class="tg" onClick=${()=>go({v:'team',id:t.id})}><${Logo} id=${t.id} size=${64}/><span>${t.name}</span><small>${r.all}</small></button>`})}</div></section>`):null}
-  ${tab==='standings'?html`<section class="sec" style="padding-top:0">${Object.keys(M.confs).sort().map(c=>html`<${Standings} M=${M} conf=${c} go=${go}/>`)}<div class="note">${M.soccer?'Calculated from the scores in the app and ranked by points: 3 for a win, 1 for a tie. Games after the regular season are not counted as conference games. Some conference opponents are not in the app yet.':!M.fb?'Calculated from the scores in the app, so they can lag behind until scores are posted.':level==='v'?'Calculated from the scores in the app. Twin Falls plays in the 5A Great Basin; its other conference opponents are not in the app yet.':'There are no official '+LV[level]+' standings. These records come from the scores posted so far, so they can lag behind.'}</div></section>`:null}
+  ${tab==='teams'?confOrder.map(c=>html`<section class="sec" style="padding-top:0"><h2 class="eyebrow">${c}</h2><div class="teamgrid">${M.confs[c].map(t=>{const r=M.rec(t.id);return html`<button class="tg" onClick=${()=>go({v:'team',id:t.id})}><${Logo} id=${t.id} size=${64}/><span>${t.name}</span><small>${r.all}</small></button>`})}</div></section>`):null}
+  ${tab==='standings'?html`<section class="sec" style="padding-top:0">${confOrder.map(c=>html`<${Standings} M=${M} conf=${c} me=${favs} go=${go}/>`)}<div class="note">${M.soccer?'Calculated from the scores in the app and ranked by points: 3 for a win, 1 for a tie. Games after the regular season are not counted as conference games. Some conference opponents are not in the app yet.':!M.fb?'Calculated from the scores in the app, so they can lag behind until scores are posted.':level==='v'?'Calculated from the scores in the app. Twin Falls plays in the 5A Great Basin; its other conference opponents are not in the app yet.':'There are no official '+LV[level]+' standings. These records come from the scores posted so far, so they can lag behind.'}</div></section>`:null}
   ${tab==='players'&&poll?html`<section class="sec" style="padding-top:0"><${Poll} key=${poll.id} M=${M} poll=${poll}/></section>`:null}
   ${tab==='players'&&!cats.length?html`<section class="sec" style="padding-top:0"><div class="slot"><strong>No ${M.sp.name} stats yet</strong><span>Player stats for ${M.sp.name} have not been loaded.</span></div></section>`:null}
   ${tab==='picks'?html`<section class="sec" style="padding-top:0"><${Pickem} key=${M.sport} S=${M.S} sport=${M.sport}/></section>`:null}
-  ${tab==='photos'?html`<section class="sec" style="padding-top:0"><${Photos} M=${M} favs=${favs} openSheet=${openSheet} ver=${ver}/></section>`:null}
   ${tab==='players'&&cats.length?html`<section class="sec" style="padding-top:0"><h2 class="eyebrow">Area leaders · Varsity ${M.sp.name}</h2>
     <div class="chips scroll">${cats.map(c=>html`<button class="chip" aria-pressed=${cat===c[0]} onClick=${()=>setCat(c[0])}>${c[1]}</button>`)}</div>
     <div class="list">${leaders.map((x,i)=>html`<button class="li" onClick=${()=>go({v:'team',id:x.t.id,tab:'stats'})}><span class="num" style="color:var(--muted);width:28px">${i+1}</span><${Logo} id=${x.t.id} size=${32}/><span class="grow"><b>${x.name}</b><div class="sub">${x.t.name}</div></span><span class="pill">${x.v}</span></button>`)}</div>
@@ -574,12 +594,15 @@ function TeamPage({M,id,tab,setTab,favs,toggle,go,openGame,openDonate,level,setL
   const biz=t.favBiz.map(b=>M.B[b]).filter(Boolean);
   useEffect(()=>{track('team',id)},[id]);if(tab==='sponsors')biz.forEach(b=>track('sponsorSeen',b.id,true));
   const skey=level==='v'?M.sport:M.sport+'-'+level,fstats=(t.stats||{})[skey]||{},tcats=catsFor(M,skey).filter(c=>(fstats[c[0]]||[]).length),hasStats=tcats.length>0,tn=teamNumbers(M,id),roster=((t.rosters[M.sport]||{})[level])||[];
+  // Only sections with something in them get a button. With nothing at all, the Players screen says so once.
+  const FANT=['stats','roster','sponsors'],avail=FANT.filter(k=>k==='stats'?(hasStats||!!tn):k==='roster'?roster.length>0:biz.length>0);
+  if(FANT.includes(tab)&&!avail.includes(tab)&&avail.length)tab=avail[0];
   return html`
   ${tab==='scores'?html`<div class="hero"><${Logo} id=${id} size=${84}/><div><h1>${t.name} ${t.mascot}</h1><p>${M.sp.name}${level==='v'?'':' '+LV[level]} · ${r.all} overall · ${r.cf} ${t.conf}</p></div></div>
-  <div class="row" style="flex-wrap:wrap;padding:10px 0 12px"><button class="btn pri" onClick=${()=>openDonate(t)}>${Ico.heart} Donate</button><button class="btn" aria-pressed=${fav} onClick=${()=>toggle(id)}>${fav?'Following':'Follow'}</button></div>`
-    :html`<div class="tsec"><h1>${({schedule:'Schedule',standings:'Standings',picks:"Pick'em",stats:'Players',roster:'Roster',photos:'Photos',sponsors:'Sponsors'})[tab]||''}</h1><span>${tab==='picks'?'All schools':M.sp.name+(level==='v'?'':' · '+LV[level])+' · '+r.all}</span></div>`}
+  <div class="row" style="flex-wrap:wrap;padding:10px 0 12px">${M.S.donateOpen?html`<button class="btn pri" onClick=${()=>openDonate(t)}>${Ico.heart} Donate</button>`:null}<button class="btn" aria-pressed=${fav} onClick=${()=>toggle(id)}>${fav?'Following':'Follow'}</button></div>`
+    :html`<div class="tsec"><h1>${({schedule:'Schedule',standings:'Standings',picks:"Pick'em",stats:'Players',roster:'Roster',sponsors:'Sponsors'})[tab]||''}</h1><span>${tab==='picks'?'All schools':M.sp.name+(level==='v'?'':' · '+LV[level])+' · '+r.all}</span></div>`}
   ${tab==='picks'?null:html`<details class="pickers" open=${tab==='scores'}><summary>${M.sp.name} · ${LV[level]} <span>change</span></summary><div style="display:flex;flex-direction:column;gap:8px;padding-top:8px"><${Sports} M=${M} setSport=${setSport}/><${Levels} level=${level} setLevel=${setLevel} M=${M}/></div></details>`}
-  ${['stats','roster','photos','sponsors'].includes(tab)?html`<nav class="seg" style="margin:6px 0 2px" aria-label="Players sections">${[['stats','Stats'],['roster','Roster']].concat(COMMUNITY?[['photos','Photos']]:[],[['sponsors','Sponsors']]).map(([k,l])=>html`<button class="chip" aria-pressed=${tab===k} onClick=${()=>setTab(k)}>${l}</button>`)}</nav>`:null}
+  ${FANT.includes(tab)&&avail.length>1?html`<nav class="seg" style="margin:6px 0 2px" aria-label="Players sections">${[['stats','Stats'],['roster','Roster'],['sponsors','Sponsors']].filter(x=>avail.includes(x[0])).map(([k,l])=>html`<button class="chip" aria-pressed=${tab===k} onClick=${()=>setTab(k)}>${l}</button>`)}</nav>`:null}
   <section class="sec">
   ${tab==='schedule'?html`<div class="list">${gs.map(g=>{const home=g.home===id,opp=M.sideOf(g,home?'away':'home'),mine=home?g.hs:g.as,th=home?g.as:g.hs,pl=played(g),sp=sponsorLine(M,g);
     return html`<button class="li" onClick=${()=>openGame(g)}><span style="width:64px;flex:none;font-size:12px;font-weight:600;letter-spacing:.8px;color:var(--muted)">${dshort(g.date)}</span><${Logo} id=${opp.id} name=${opp.name}/><span class="grow"><b>${g.siteUnknown?'vs':home?'vs':'at'} ${opp.name}</b><div class="sub">${M.isConf(g)?'Conference':g.post?'':'Non-conference'}${sp?html` · ${sp}`:''}${pickNote(M,g)?html`${M.isConf(g)||!g.post||sp?' · ':''}${pickNote(M,g)}`:null}</div></span>
@@ -597,12 +620,11 @@ function TeamPage({M,id,tab,setTab,favs,toggle,go,openGame,openDonate,level,setL
     <tr><td>${M.vb?'Sets won per match':M.soccer?'Goals per game':'Points per game'}</td><td>${tn.pf}</td></tr><tr><td>${M.vb?'Sets lost per match':M.soccer?'Goals allowed per game':'Points allowed per game'}</td><td>${tn.pa}</td></tr>
     <tr><td>At home</td><td>${tn.home}</td></tr><tr><td>On the road</td><td>${tn.away}</td></tr><tr><td>Streak</td><td>${tn.streak}</td></tr>
     ${tn.best?html`<tr><td>Biggest win</td><td>${tn.best.mine}-${tn.best.th} ${tn.best.g.home===id?'vs':'at'} ${M.sideOf(tn.best.g,tn.best.g.home===id?'away':'home').name}</td></tr>`:null}</tbody></table></div>
-    <div class="note">Worked out from the scores in the app.</div><h2 class="eyebrow" style="margin-top:8px">Player leaders</h2>`:null}
+    <div class="note">Worked out from the scores in the app.</div>${hasStats?html`<h2 class="eyebrow" style="margin-top:8px">Player leaders</h2>`:null}`:null}
   ${tab==='stats'?(hasStats?html`<div class="grid">${tcats.map(c=>html`<div class="card"><div class="meta"><span>${c[1]}</span><span>${c[2]}</span></div>${fstats[c[0]].map(x=>html`<div class="trow"><span class="nm">${x.name}</span><span class="score" style="font-size:22px">${x.v}</span></div>`)}</div>`)}</div>${level==='v'?html`<a class="note" href=${mpLink(t,'stats','v',M.sport)} target="_blank" rel="noopener">Full stats on MaxPreps</a>`:html`<div class="note">${LV[level]} stats are kept by 208 Pressbox.</div>`}`
-    :html`<div class="slot"><strong>No player stats posted yet</strong><span>${level==='v'?t.name+' has not posted '+M.sp.name+' player stats on MaxPreps.':'No '+LV[level]+' player stats have been added for '+t.name+' yet.'}</span></div>`):null}
+    :tn?null:html`<div class="slot"><strong>No player stats posted yet</strong><span>${level==='v'?t.name+' has not posted '+M.sp.name+' player stats on MaxPreps.':'No '+LV[level]+' player stats have been added for '+t.name+' yet.'}</span></div>`):null}
   ${tab==='roster'?(roster.length?html`<div class="note">${roster.length} players${level==='v'&&(t.rosterNote||{})[M.sport]?' · this is the '+t.rosterNote[M.sport]+' roster. This season\'s has not been posted yet.':''}</div><div class="list">${roster.map(p=>html`<div class="li"><span class="num">${p.n||'–'}</span><span class="grow"><b>${p.name}</b>${p.pos?html`<div class="sub">${p.pos}</div>`:null}</span><span class="tag">${p.gr||'—'}</span></div>`)}</div><a class="note" href=${mpLink(t,'roster',level,M.sport)} target="_blank" rel="noopener">Roster on MaxPreps</a>`
     :html`<div class="slot"><strong>No roster posted yet</strong><span>There is no ${M.sp.name} ${LV[level]} roster for ${t.name} yet. One can be pasted in from the admin screen.</span></div>`):null}
-  ${tab==='photos'?html`<${Photos} M=${M} team=${id} favs=${favs} openSheet=${openSheet} ver=${ver}/>`:null}
   ${tab==='sponsors'?html`<h2 class="eyebrow">${t.name}'s favorite businesses</h2>
     ${biz.length?html`<div class="grid">${biz.map(b=>html`<div class="card"><div class="trow"><${Logo} name=${b.name} size=${40}/><span class="nm">${b.name}</span></div>${b.tag?html`<div class="note">${b.tag}</div>`:null}${b.url?html`<a href=${b.url} target="_blank" rel="noopener" onClick=${()=>track('sponsorTap',b.id)}>Visit website</a>`:null}</div>`)}</div>`
     :html`<div class="slot"><strong>Your business here</strong><span>Local businesses that back ${t.name} are listed here for every fan who opens this page.</span></div>`}`:null}
@@ -680,12 +702,54 @@ function ShareSheet({M,g,onClose}){
   useEffect(()=>{let on=true;scoreCard(M,g).then(c=>c.toBlob(b=>{if(!on||!b)return;blob.current=b;setUrl(URL.createObjectURL(b))},'image/png'));return()=>{on=false}},[g.id]);
   const file=()=>new File([blob.current],'208-pressbox-score.png',{type:'image/png'});
   const can=(()=>{try{return!!blob.current&&navigator.canShare&&navigator.canShare({files:[file()]})}catch(e){return false}})();
-  const share=async()=>{try{await navigator.share({files:[file()],text:text+' '+SITE})}catch(e){}};
+  const link=SITE+'?g='+encodeURIComponent(g.id),share=async()=>{try{await navigator.share({files:[file()],text:text+' '+link})}catch(e){}};
   return html`<${Sheet} title=${up?'Share this game':'Share score'} onClose=${onClose}>
     ${url?html`<img src=${url} alt=${text} style="width:100%;border-radius:12px;border:1px solid var(--line)"/>
       <div class="row" style="flex-wrap:wrap">${can?html`<button class="btn pri" onClick=${share}>${Ico.share} Share</button>`:null}<a class=${'btn'+(can?'':' pri')} href=${url} download=${up?'208-pressbox-game.png':'208-pressbox-score.png'}>Save picture</a></div>
       <div class="note">${up?'Invite people to the game: post it':'Post it'} to Facebook, Instagram or a team group chat. The picture carries the app's address.</div>`
     :html`<div class="note">Drawing the picture…</div>`}<//>`;
+}
+
+/* ---------- Score alerts ----------
+   The phone subscribes with the key in state/push and saves the subscription to push/{uid}. A scheduled job on GitHub
+   checks for new scores every few minutes and sends the alerts. Until that job has made its key, alerts stay hidden. */
+const pushOK=()=>'serviceWorker' in navigator&&'PushManager' in window&&'Notification' in window;
+const isIOS=()=>/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+let PUSHKEY=null;
+const pushKey=()=>PUSHKEY!=null?Promise.resolve(PUSHKEY):dbReady.then(()=>DB.get('state','push')).then(d=>{PUSHKEY=(d&&d.key)||'';return PUSHKEY}).catch(()=>'');
+const b64u=s=>{const b=atob((s+'='.repeat((4-s.length%4)%4)).replace(/-/g,'+').replace(/_/g,'/'));return Uint8Array.from(b,c=>c.charCodeAt(0))};
+function swReg(){if(!('serviceWorker' in navigator)||PREVIEW)return Promise.resolve(null);return navigator.serviceWorker.register('sw.js').then(()=>navigator.serviceWorker.ready).catch(e=>{console.warn(e);return null})}
+const myAlerts=()=>{try{return JSON.parse(ls.get('pb_push')||'null')}catch(e){return null}};
+async function alertsOn(o){
+  if(!pushOK())return isIOS()&&!standalone()?'ios':'unsupported';
+  const key=await pushKey();if(!key)return'notready';
+  if(await Notification.requestPermission()!=='granted')return'denied';
+  const reg=await swReg();if(!reg)return'unsupported';
+  let sub=await reg.pushManager.getSubscription();if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64u(key)});
+  const d={all:!!o.all,every:!!o.every,teams:o.teams||[]};if(DB.me.admin&&DB.kind==='fire')d.admin=!!o.admin;
+  await DB.set('push',DB.me.uid,{...d,sub:JSON.parse(JSON.stringify(sub)),uid:DB.me.uid,at:DB.stamp()});ls.set('pb_push',JSON.stringify(d));return''}
+async function alertsOff(){try{const reg=await swReg(),sub=reg&&await reg.pushManager.getSubscription();if(sub)await sub.unsubscribe()}catch(e){}try{await DB.del('push',DB.me.uid)}catch(e){}ls.set('pb_push','')}
+const ALERT_ERR={ios:'On iPhone, add 208 Pressbox to your home screen first, then open it from there and turn on alerts.',unsupported:'This browser cannot show alerts. Try Chrome on Android, or Safari on iPhone after adding the app to your home screen.',
+  notready:'Score alerts are not switched on yet. Check back soon.',denied:'Alerts are blocked for this site. Allow notifications for 208 Pressbox in your phone settings, then try again.'};
+function AlertCard({favs,openSheet}){
+  const M0=id=>{const t=SEED.teams.find(x=>x.id===id);return t?t.name:''};
+  const[key]=useLoad(()=>pushKey(),[]);if(!COMMUNITY||!key)return null;const on=myAlerts();
+  if(on)return html`<div class="note" style="display:flex;gap:8px;align-items:center;margin:-4px 0 12px">${Ico.bell}<span>Score alerts on · ${on.all?'all schools':'my teams'} · ${on.every?'every score':'final scores'}</span><button class="link" style="min-height:0" onClick=${()=>openSheet({k:'alerts'})}>Change</button></div>`;
+  return html`<button class="banner between" style="width:100%;text-align:left;margin-bottom:14px;color:var(--fg)" onClick=${()=>openSheet({k:'alerts'})}><span style="display:flex;gap:10px;align-items:center">${Ico.bell}<span><b>Get score alerts</b><br/>A notification when ${favs.length===1&&M0(favs[0])?M0(favs[0])+' scores':'your teams score'}.</span></span><span class="btn sm pri" style="white-space:nowrap">Turn on</span></button>`;
+}
+function AlertSheet({M,favs,onClose,openInstall}){
+  const cur=myAlerts();const[o,setO]=useState(cur||{all:!favs.length,every:true,admin:false});const[busy,setBusy]=useState(false);const[err,setErr]=useState(!pushOK()&&isIOS()&&!standalone()?'ios':'');
+  const save=async()=>{if(busy)return;setBusy(true);setErr('');try{await dbReady;const e=await alertsOn({...o,teams:favs});if(e)setErr(e);else{SAY('Score alerts are on.');onClose()}}catch(x){console.warn(x);setErr('unsupported')}setBusy(false)};
+  const chip=(k,v,l)=>html`<button class="chip" aria-pressed=${o[k]===v} onClick=${()=>setO({...o,[k]:v})}>${l}</button>`;
+  return html`<${Sheet} title="Score alerts" onClose=${onClose}>
+    <h3 class="eyebrow">Which teams</h3><div class="chips">${chip('all',false,'My teams'+(favs.length?' ('+favs.length+')':''))}${chip('all',true,'All 13 schools')}</div>
+    ${!o.all&&!favs.length?html`<div class="note">Follow a team first, or pick all schools.</div>`:null}
+    <h3 class="eyebrow">When</h3><div class="chips">${chip('every',true,'Every score update')}${chip('every',false,'Final scores only')}</div>
+    ${DB.me.admin&&DB.kind==='fire'?html`<label class="row" style="font-size:14px"><input type="checkbox" checked=${!!o.admin} onChange=${e=>setO({...o,admin:e.target.checked})} style="width:22px;height:22px"/>Also tell me when a fan reports a score</label>`:null}
+    ${err?html`<div class="note" style="color:var(--fg)">${ALERT_ERR[err]||err}</div>${err==='ios'?html`<div><button class="btn pri" onClick=${openInstall}>Add to home screen</button></div>`:null}`:null}
+    ${err==='ios'?null:html`<div class="row" style="flex-wrap:wrap"><button class="btn pri" disabled=${busy||(!o.all&&!favs.length)} onClick=${save}>${busy?'Turning on…':cur?'Save':'Turn on alerts'}</button>
+      ${cur?html`<button class="btn" onClick=${async()=>{await alertsOff();SAY('Score alerts are off.');onClose()}}>Turn off</button>`:null}</div>`}
+    <div class="note">Alerts can run a few minutes behind the scoreboard.</div><//>`;
 }
 
 /* ---------- Add to home screen ---------- */
@@ -694,12 +758,12 @@ function device(){const u=navigator.userAgent,ios=/iPhone|iPad|iPod/.test(u)||(n
   if(ios)return inapp?'inapp':/CriOS/.test(u)?'ios-chrome':/FxiOS|EdgiOS/.test(u)?'ios-other':'ios';
   if(/Android/.test(u))return inapp?'inapp':/SamsungBrowser/.test(u)?'samsung':'android';return'desktop'}
 const HOW={
-  ios:['iPhone (Safari)',['Tap the Share button, the square with an arrow pointing up. It sits in the bar at the bottom of Safari. If it is not there, tap the ••• button first.','Scroll down the list and tap "Add to Home Screen".','Tap "Add" in the top corner. The chalkboard icon lands on your home screen.']],
-  'ios-chrome':['iPhone (Chrome)',['Tap the Share button at the right end of the address bar.','Scroll down and tap "Add to Home Screen".','Tap "Add".']],
-  'ios-other':['iPhone',['Open this page in Safari. Other iPhone browsers cannot always add apps.','Tap the Share button, then "Add to Home Screen".','Tap "Add".']],
-  android:['Android (Chrome)',['Tap the ⋮ menu in the top right corner of Chrome.','Tap "Add to Home screen" or "Install app".','Tap "Add" or "Install".']],
-  samsung:['Samsung Internet',['Tap the ☰ menu in the bottom right corner.','Tap "Add to", then "Home screen".','Tap "Add".']],
-  inapp:['Open in your browser first',['You are inside another app, such as Facebook or Instagram, which cannot add apps. Tap the ••• or ⋮ menu.','Choose "Open in Safari", "Open in Chrome" or "Open in browser".','Then come back to this screen for the next steps.']]};
+  ios:['iPhone',['Tap Share ⬆︎ at the bottom of Safari (or ••• first).','Tap "Add to Home Screen", then "Add".']],
+  'ios-chrome':['iPhone',['Tap Share ⬆︎ in the address bar.','Tap "Add to Home Screen", then "Add".']],
+  'ios-other':['iPhone',['Open this page in Safari.','Tap Share ⬆︎, then "Add to Home Screen".']],
+  android:['Android',['Tap ⋮ at the top right.','Tap "Add to Home screen" or "Install".']],
+  samsung:['Samsung',['Tap ☰ at the bottom right.','Tap "Add page to", then "Home screen".']],
+  inapp:['Open it in your browser first',['Tap ••• or ⋮ at the top.','Tap "Open in browser", then add it from there.']]};
 function InstallSteps({after}){
   const d=device(),show=d==='desktop'?['ios','android']:[d];const[,tick]=useState(0);
   const go=async()=>{const e=installEvt;if(!e)return;installEvt=null;try{e.prompt();await e.userChoice}catch(x){}tick(1);if(after)after()};
@@ -709,27 +773,25 @@ function InstallSteps({after}){
 }
 function InstallSheet({onClose}){
   return html`<${Sheet} title="Add to home screen" onClose=${onClose}>
-    <div class="note">208 Pressbox works like an app once it is on your home screen: one tap to open, full screen, no app store.</div><${InstallSteps} after=${onClose}/><//>`;
+    <div class="note">One tap to open, no app store. On iPhone it's also the only way to get score alerts.</div><${InstallSteps} after=${onClose}/><//>`;
 }
 const HIGHLIGHTS=[['Scores and schedules','Scores for your teams up front. Full schedules and playoff brackets are under Schedule.'],['Tap any game','Get a recap, share the score, or report it from the stands.']]
-  .concat(COMMUNITY?[["Play Pick'em",'Pick the winners each week and climb the leaderboard.'],['Vote and add photos','Player of the Week and game photos are under Fans.']]:[]);
+  .concat(COMMUNITY?[["Play Pick'em",'Pick the winners each week and climb the leaderboard.']]:[]);
 /* First open: 1) add to home screen, 2) pick teams, 3) a few highlights. Opened from the home screen it starts at step 2,
    so nobody picks teams in the browser and then again in the installed app. */
 function Welcome({M,favs,toggle,onClose,start}){
   const[nm,setNm]=useState(myName());
   const first=standalone()?1:0,[step,setStep]=useState(start==null?first:start),n=3-first,at=step-first+1;
-  const steps=html`<span class="note">Step ${at} of ${n}</span>`;
-  if(step===0)return html`<${Sheet} title="Add it to your home screen" onClose=${onClose}>${steps}
-    <div>Do this first. 208 Pressbox then opens like an app with one tap, and you finish setting up there.</div>
+  if(step===0)return html`<${Sheet} title="Add 208 Pressbox to your home screen" onClose=${onClose}>
+    <div class="note">One tap to open, no app store. On iPhone it's also the only way to get score alerts.</div>
     <${InstallSteps} after=${()=>setStep(1)}/>
-    <div class="note">After it is on your home screen, close this page and open 208 Pressbox from the new icon.</div>
-    <div><button class="btn" onClick=${()=>setStep(1)}>Not now, keep going here</button></div><//>`;
-  if(step===1)return html`<${Sheet} title="Pick your teams" onClose=${onClose}>${steps}
+    <div class="row"><button class="btn" onClick=${()=>setStep(1)}>Not now</button></div><//>`;
+  if(step===1)return html`<${Sheet} title="Pick your teams" onClose=${onClose}>
     <label class="field">Your name (shows to friends and on Pick'em)<input id="wl-name" value=${nm} maxlength="24" onInput=${e=>setNm(e.target.value)} onBlur=${()=>saveName(nm)} placeholder="First name and last initial"/></label>
     <div class="note">Then follow your teams. Their latest score and next game show first when you open the app. You can change this any time.</div>
     <div class="list">${M.S.teams.map(t=>html`<div class="li"><${Logo} id=${t.id} size=${36}/><span class="grow"><b>${t.name}</b><div class="sub">${t.mascot}</div></span><button class=${'btn sm'+(favs.includes(t.id)?' pri':'')} aria-pressed=${favs.includes(t.id)} onClick=${()=>toggle(t.id)}>${favs.includes(t.id)?'Following':'Follow'}</button></div>`)}</div>
     <div><button class="btn pri" onClick=${()=>{saveName(nm);setStep(2)}}>${favs.length||nm.trim()?'Next':'Skip for now'}</button></div><//>`;
-  return html`<${Sheet} title="You're set" onClose=${onClose}>${start==null?steps:null}
+  return html`<${Sheet} title="You're set" onClose=${onClose}>
     <div class="list">${HIGHLIGHTS.map(x=>html`<div class="li"><span class="grow"><b>${x[0]}</b><div class="sub">${x[1]}</div></span></div>`)}</div>
     <div><button class="btn pri" onClick=${onClose}>${start==null?'Start':'Got it'}</button></div><//>`;
 }
@@ -737,27 +799,42 @@ function Welcome({M,favs,toggle,onClose,start}){
 /* ---------- Report a score, and apply to be a trusted source ---------- */
 const PERIODS=sp=>sp==='vb'?['Set 1','Set 2','Set 3','Set 4','Set 5','Final']:sp==='football'?['1st Qtr','2nd Qtr','Halftime','3rd Qtr','4th Qtr','Final','Final/OT']:/soc$/.test(sp)?['1st Half','Halftime','2nd Half','Final','Final/OT']:['1st Qtr','2nd Qtr','Halftime','3rd Qtr','4th Qtr','Final','Final/OT'];
 const ROLES=['Parent','Coach or school staff','Student','Booster club','Media','Fan'];
-function ReportSheet({M,g,onClose}){
+/* Score reporters: the admin hands out a short code (or a link with it). Entering it once makes this phone a reporter,
+   and its scores show for everyone right away. */
+const REPKEY='pb_repcode';
+async function redeemCode(code){code=(code||'').trim().toUpperCase().replace(/[^A-Z0-9]/g,'');if(code.length<5)return'That code is too short.';
+  await dbReady;const c=await DB.get('repcodes',code).catch(()=>null);if(!c)return'That code did not work. Check it with whoever sent it.';
+  await DB.set('trusted',DB.me.uid,{name:c.name,team:c.team,code,uid:DB.me.uid,at:Date.now()});DB.me.trusted=true;ls.set(REPKEY,code);if(c.name&&!myName())saveName(c.name);return''}
+function noteRepLink(onDone){let r='';try{r=new URLSearchParams(location.search).get('rep')||''}catch(e){}
+  if(r){try{history.replaceState(null,'',location.pathname+location.hash)}catch(e){}}
+  r=r||(!DB.me.trusted&&ls.get(REPKEY))||'';if(!r||!COMMUNITY)return;
+  dbReady.then(async()=>{if(DB.me.trusted)return;const err=await redeemCode(r);if(!err){onDone();SAY("You're a 208 Pressbox score reporter. Your scores show for everyone right away.")}else SAY(err)}).catch(e=>console.warn(e))}
+const defaultPeriod=(sp,g)=>{const P=PERIODS(sp),mins=(Date.now()-kickoff(g))/6e4;if(mins<0||mins>150)return P.find(x=>/^Final/.test(x));const i=Math.min(P.length-2,Math.floor(mins/150*(P.length-1)));return P[i]};
+function ReportSheet({M,g,onClose,onRep}){
   const h=M.sideOf(g,'home'),a=M.sideOf(g,'away');
-  const[f,setF]=useState({as:g.as??'',hs:g.hs??'',st:'Final',name:myName()});const[done,setDone]=useState(null);const[busy,setBusy]=useState(false);
+  const[f,setF]=useState({as:g.as??'',hs:g.hs??'',st:(g.live&&g.live.st)||defaultPeriod(M.sport,g),name:myName()});const[done,setDone]=useState(null);const[busy,setBusy]=useState(false);
+  const[pic,setPic]=useState(null);const[code,setCode]=useState('');const[showCode,setShowCode]=useState(false);
   const[ap,setAp]=useState({contact:'',team:g.home||g.away||M.S.teams[0].id,role:ROLES[0],note:''});
   const good=f.as!==''&&f.hs!==''&&f.name.trim();
+  const takePic=async e=>{const file=e.target.files&&e.target.files[0];if(!file)return;try{setPic(await shrink(file,900,.6,300000))}catch(x){SAY('That picture could not be read.')}};
   const send=async()=>{if(!good||busy)return;setBusy(true);const as=+f.as,hs=+f.hs,name=f.name.trim().slice(0,40);
-    try{await dbReady;ls.set('pb_name',name);const tr=DB.me.trusted;
-      await DB.add('reports',{game:g.id,label:a.name+' at '+h.name+' · '+dshort(g.date),sport:M.sp.name+(M.level==='v'?'':' '+LV[M.level]),as,hs,st:f.st,name,uid:DB.me.uid,status:tr?'auto':'new',at:DB.stamp()});
+    try{await dbReady;saveName(name);const tr=DB.me.trusted||DB.me.admin&&DB.kind==='fire';
+      const id=await DB.add('reports',{game:g.id,day:g.date,label:a.name+' at '+h.name+' · '+dshort(g.date),sport:M.sp.name+(M.level==='v'?'':' '+LV[M.level]),as,hs,st:f.st,name,uid:DB.me.uid,status:tr?'auto':'new',pic:!!pic,at:DB.stamp()});
+      if(pic)await DB.set('reportPics',id,{img:pic.src,uid:DB.me.uid}).catch(e=>console.warn(e));
       if(tr)await DB.set('state','live',{[g.id]:{as,hs,st:f.st,by:name,at:Date.now()}},true);
       const old=tr?null:await DB.get('applications',DB.me.uid).catch(()=>null);
       setDone({tr,applied:old?old.status:null});
     }catch(e){console.warn(e);SAY('Could not send that. Check your connection and try again.')}setBusy(false)};
+  const useCode=async()=>{if(busy)return;setBusy(true);try{const err=await redeemCode(code);if(err)SAY(err);else{SAY("You're a score reporter now.");setShowCode(false);if(onRep)onRep()}}catch(e){console.warn(e);SAY('That did not work. Try again.')}setBusy(false)};
   const apply=async()=>{if(!ap.contact.trim()||busy)return;setBusy(true);
     try{await DB.set('applications',DB.me.uid,{name:f.name.trim().slice(0,40),contact:ap.contact.trim().slice(0,80),team:ap.team,role:ap.role,note:ap.note.trim().slice(0,300),uid:DB.me.uid,status:'new',at:DB.stamp()});setDone({...done,applied:'new'})}
     catch(e){console.warn(e);SAY('Could not send that. Try again.')}setBusy(false)};
   const num=k=>html`<input class="in sc" style="width:76px;font-size:26px" inputmode="numeric" id=${'rp-'+k} aria-label=${(k==='as'?a.name:h.name)+' score'} value=${f[k]} onInput=${e=>setF({...f,[k]:e.target.value.replace(/[^0-9]/g,'').slice(0,3)})}/>`;
   if(done)return html`<${Sheet} title="Score sent" onClose=${onClose}>
-    <div class="card"><b>${a.name} ${f.as}, ${h.name} ${f.hs} · ${f.st}</b><div class="note">${done.tr?'You are a trusted source, so this is showing for everyone now.':'Thanks. 208 Pressbox checks it before it shows for everyone.'}</div></div>
-    ${done.tr?null:done.applied==='new'?html`<div class="note">Your trusted source application is waiting for approval.</div>`
+    <div class="card"><b>${a.name} ${f.as}, ${h.name} ${f.hs} · ${f.st}</b><div class="note">${done.tr?'You are a score reporter, so this is showing for everyone now.':'Thanks. It shows for everyone once 208 Pressbox checks it, or as soon as another fan reports the same score.'}</div></div>
+    ${done.tr?null:done.applied==='new'?html`<div class="note">Your reporter application is waiting for approval.</div>`
     :done.applied==='no'?null
-    :html`<h3 class="eyebrow">Be a trusted source</h3><div class="note">Trusted sources post scores straight to the app, live from the game. Tell us who you are and 208 Pressbox will get back to you.</div>
+    :html`<h3 class="eyebrow">Be a score reporter</h3><div class="note">Reporters post scores straight to the app, live from the game. Tell us who you are and 208 Pressbox will get back to you.</div>
       <div class="formrow"><label class="field">Phone or email<input id="ap-contact" value=${ap.contact} onInput=${e=>setAp({...ap,contact:e.target.value})}/></label>
         <label class="field">Team you follow<select id="ap-team" value=${ap.team} onChange=${e=>setAp({...ap,team:e.target.value})}>${M.S.teams.map(t=>html`<option value=${t.id}>${t.name}</option>`)}</select></label>
         <label class="field">You are a<select id="ap-role" value=${ap.role} onChange=${e=>setAp({...ap,role:e.target.value})}>${ROLES.map(r=>html`<option value=${r}>${r}</option>`)}</select></label></div>
@@ -769,8 +846,12 @@ function ReportSheet({M,g,onClose}){
       <div class="li"><${Logo} id=${h.id} name=${h.name} size=${40}/><span class="grow"><b>${h.name}</b></span>${num('hs')}</div></div>
     <div class="formrow"><label class="field">Where the game stands<select id="rp-st" value=${f.st} onChange=${e=>setF({...f,st:e.target.value})}>${PERIODS(M.sport).map(p=>html`<option value=${p}>${p}</option>`)}</select></label>
       <label class="field">Your name<input id="rp-name" value=${f.name} onInput=${e=>setF({...f,name:e.target.value})}/></label></div>
+    ${DB.me.trusted?null:html`<label class="btn" style="align-self:flex-start;cursor:pointer">${Ico.camera} ${pic?'Retake scoreboard photo':'Add a scoreboard photo'}<input id="rp-pic" type="file" accept="image/*" capture="environment" style="display:none" onChange=${takePic}/></label>
+      ${pic?html`<img src=${pic.src} alt="Scoreboard photo" style="width:100%;max-height:220px;object-fit:contain;border-radius:10px;background:#000"/>`:null}`}
     <div class="row"><button class="btn pri" disabled=${!good||busy} onClick=${send}>${busy?'Sending…':'Send score'}</button></div>
-    <div class="note">Report only what is on the scoreboard. Scores from trusted sources show right away; everyone else's are checked first.</div><//>`;
+    <div class="note">${DB.me.trusted?"You're a score reporter, so this shows for everyone right away.":'Report only what is on the scoreboard. A photo of the scoreboard gets it checked faster.'}</div>
+    ${DB.me.trusted?null:showCode?html`<div class="row"><input class="in" id="rp-code" style="flex:1;text-transform:uppercase" placeholder="Reporter code" value=${code} onInput=${e=>setCode(e.target.value)}/><button class="btn" disabled=${busy||code.trim().length<5} onClick=${useCode}>Use code</button></div>`
+      :html`<button class="link" style="align-self:flex-start" onClick=${()=>setShowCode(true)}>Have a reporter code?</button>`}<//>`;
 }
 
 /* ---------- Pick'em ---------- */
@@ -891,51 +972,12 @@ function Poll({M,poll}){
     <div class="note">${!poll.open?'Voting is closed. '+tot+(tot===1?' vote.':' votes.'):voted?'Your vote is in for today. Come back tomorrow to vote again. '+tot+(tot===1?' vote':' votes')+' so far.':'One vote per day until voting closes.'}</div>`;
 }
 
-/* ---------- Photos ---------- */
+/* ---------- Pictures are made smaller before sending ---------- */
 async function shrink(file,max,q,cap){
   const url=URL.createObjectURL(file),im=await loadImg(url);URL.revokeObjectURL(url);if(!im)throw new Error('not a picture');
   const k=Math.min(1,max/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);
   let out=c.toDataURL('image/jpeg',q);while(out.length>cap&&q>.3){q-=.1;out=c.toDataURL('image/jpeg',q)}
   if(out.length>cap)throw new Error('too large');return{src:out,w:c.width,h:c.height};
-}
-function UploadSheet({M,team,onClose,onDone}){
-  const[f,setF]=useState({team:team||M.S.teams[0].id,cap:'',credit:ls.get('pb_credit')||myName(),ok:false});const[files,setFiles]=useState([]);const[busy,setBusy]=useState('');
-  const send=async()=>{if(!files.length||!f.ok||busy)return;let n=0,bad=0;
-    try{await dbReady;ls.set('pb_credit',f.credit.trim());const st=DB.me.trusted||DB.me.admin?'ok':'pending';
-      for(const file of files){setBusy('Sending '+(n+bad+1)+' of '+files.length+'…');
-        try{const big=await shrink(file,1400,.74,880000),th=await shrink(file,380,.62,60000),id=newId();
-          await DB.set('photoFull',id,{img:big.src,uid:DB.me.uid});
-          await DB.set('photos',id,{team:f.team,cap:f.cap.trim().slice(0,140),credit:f.credit.trim().slice(0,40),uid:DB.me.uid,status:st,thumb:th.src,w:big.w,h:big.h,at:DB.stamp()});n++}
-        catch(e){console.warn(e);bad++}}
-      SAY(n?(n+' photo'+(n>1?'s':'')+(st==='ok'?' added.':' sent. They show once approved.'))+(bad?' '+bad+' could not be read.':''):'Those files could not be read as pictures.');
-      if(n){onDone();onClose()}}catch(e){console.warn(e);SAY('Could not send. Check your connection.')}setBusy('')};
-  return html`<${Sheet} title="Add photos" onClose=${onClose}>
-    <label class="field">Pictures<input id="ph-files" type="file" accept="image/*" multiple onChange=${e=>setFiles([...e.target.files].slice(0,12))}/></label>
-    <div class="formrow"><label class="field">Team<select id="ph-team" value=${f.team} onChange=${e=>setF({...f,team:e.target.value})}>${M.S.teams.map(t=>html`<option value=${t.id}>${t.name}</option>`)}</select></label>
-      <label class="field">Photo credit<input id="ph-credit" value=${f.credit} onInput=${e=>setF({...f,credit:e.target.value})} placeholder="Photographer's name"/></label></div>
-    <label class="field">Caption (optional)<input id="ph-cap" value=${f.cap} maxlength="140" onInput=${e=>setF({...f,cap:e.target.value})} placeholder="Hillcrest vs Skyline, Oct 9"/></label>
-    <label class="row" style="align-items:flex-start;font-size:13.5px"><input id="ph-ok" type="checkbox" checked=${f.ok} onChange=${e=>setF({...f,ok:e.target.checked})} style="width:22px;height:22px;flex:none"/><span>I took these pictures or have the photographer's permission to share them here.</span></label>
-    <div class="row"><button class="btn pri" disabled=${!files.length||!f.ok||!f.credit.trim()||!!busy} onClick=${send}>${busy||'Add '+(files.length||'')+' photo'+(files.length===1?'':'s')}</button></div>
-    <div class="note">Up to 12 at a time. Pictures are made smaller before sending. A parent or player can ask for any photo to be taken down.</div><//>`;
-}
-function PhotoSheet({M,p,onClose,onDone}){
-  const[full]=useLoad(()=>DB.get('photoFull',p.id),[p.id]);const t=M.T[p.team];
-  const act=async(fn,msg)=>{try{await fn();SAY(msg);onDone();onClose()}catch(e){console.warn(e);SAY('That did not work. Try again.')}};
-  return html`<${Sheet} title=${t?t.name:'Photo'} onClose=${onClose}>
-    <img src=${full&&full.img||p.thumb} alt=${p.cap||'Team photo'} style=${'width:100%;border-radius:12px;aspect-ratio:'+p.w+'/'+p.h+';object-fit:cover;background:var(--card)'}/>
-    ${p.cap?html`<div>${p.cap}</div>`:null}<div class="note">Photo: ${p.credit||'not credited'}${p.status==='pending'?' · waiting for approval':''}</div>
-    <div class="row" style="flex-wrap:wrap">
-      ${DB.me.admin&&p.status!=='ok'?html`<button class="btn sm pri" onClick=${()=>act(()=>DB.set('photos',p.id,{status:'ok'},true),'Photo approved.')}>Approve</button>`:null}
-      ${DB.me.admin||DB.me.uid===p.uid?html`<button class="btn sm" onClick=${()=>act(async()=>{await DB.del('photos',p.id);await DB.del('photoFull',p.id)},'Photo removed.')}>Remove</button>`
-      :html`<button class="btn sm" onClick=${()=>act(()=>DB.add('flags',{photo:p.id,team:p.team,uid:DB.me.uid,at:DB.stamp()}),'Thanks. 208 Pressbox will take a look.')}>Ask to take this down</button>`}</div><//>`;
-}
-function Photos({M,team,favs,openSheet,ver}){
-  const[f,setF]=useState(team||'all');const tf=team||(f==='all'?null:f);
-  const[rows]=useLoad(()=>DB.list('photos',[['status','==','ok']].concat(tf?[['team','==',tf]]:[]),{limit:60}),[tf,ver]);
-  return html`${team?null:html`<div class="chips scroll"><button class="chip" aria-pressed=${f==='all'} onClick=${()=>setF('all')}>All teams</button>${favs.filter(id=>M.T[id]).map(id=>html`<button class="chip" aria-pressed=${f===id} onClick=${()=>setF(id)}>${M.T[id].name}</button>`)}</div>`}
-    <div><button class="btn pri" onClick=${()=>openSheet({k:'upload',team:tf})}>${Ico.camera} Add photos</button></div>
-    ${rows===null?html`<div class="note">Loading photos…</div>`:rows&&rows.length?html`<div class="pgrid">${rows.map(p=>html`<button class="ph" aria-label=${p.cap||'Photo'} onClick=${()=>openSheet({k:'photo',p})}><img src=${p.thumb} alt="" loading="lazy"/></button>`)}</div>`
-    :html`<div class="slot"><strong>No photos yet</strong><span>${tf?'Be the first to add '+M.T[tf].name+' photos.':'Game photos from parents and student photographers show up here.'}</span></div>`}`;
 }
 
 /* ---------- Playoffs ---------- */
@@ -1004,22 +1046,35 @@ function Admin({M,update,reset,go,level,setLevel,setSport,me,setMe,openSheet,ver
     ${tab==='review'?html`<div class="list">${S.flags.map((f,i)=>html`<div class="li"><span class="grow">${f}</span><button class="btn sm" onClick=${()=>update(s=>{s.flags.splice(i,1)})}>Done</button></div>`)}${S.flags.length?null:html`<div class="li">Nothing needs a look.</div>`}</div>`:null}
   </section>`;
 }
+const newCode=()=>Array.from({length:6},()=>'ABCDEFGHJKMNPQRSTUVWXYZ23456789'[Math.floor(Math.random()*31)]).join('');
 function AdmInbox({M,update,openSheet,ver,bump}){
-  const[d,reload]=useLoad(()=>Promise.all([DB.list('reports',[['status','==','new']]),DB.list('applications',[['status','==','new']]),DB.list('photos',[['status','==','pending']]),DB.list('flags'),DB.list('trusted')]),[ver]);
+  const[d,reload]=useLoad(()=>Promise.all([DB.list('reports',[['status','==','new']]),DB.list('applications',[['status','==','new']]),DB.list('trusted'),DB.list('repcodes')]),[ver]);
+  const[pics,setPics]=useState({});const[nr,setNr]=useState({name:'',team:M.S.teams[0].id});
   const run=async(fn,msg)=>{try{await fn();if(msg)SAY(msg)}catch(e){console.warn(e);SAY('That did not save. Try again.')}reload()};
   if(d===null)return html`<div class="note">Loading…</div>`;if(!d)return html`<div class="note">Could not load the inbox. Check your connection.</div>`;
-  const[reps,apps,pend,flags,trusted]=d;
+  const[reps,apps,trusted,codes]=d;
   const accept=r=>run(async()=>{if(/^Final/.test(r.st))update(s=>{const g=s.games.find(x=>x.id===r.game);if(g){g.as=r.as;g.hs=r.hs}});else await DB.set('state','live',{[r.game]:{as:r.as,hs:r.hs,st:r.st,by:r.name,at:Date.now()}},true);await DB.set('reports',r.id,{status:'ok'},true)},'Score posted.');
+  const seePic=async r=>{const x=await DB.get('reportPics',r.id).catch(()=>null);setPics(p=>({...p,[r.id]:x?x.img:'none'}))};
+  const linkOf=c=>SITE+'?rep='+c;
+  const sendCode=c=>shareLink('208 Pressbox score reporter',"You're a 208 Pressbox score reporter"+(c.team&&M.T[c.team]?' for '+M.T[c.team].name:'')+'. Open this link on your phone to turn it on. If you add the app to your home screen, open it there, tap any game, Report score, "Have a reporter code?" and enter '+c.id+'.',linkOf(c.id));
+  const addRep=()=>run(async()=>{const name=nr.name.trim().slice(0,40);if(!name)return;const id=newCode();await DB.set('repcodes',id,{name,team:nr.team,at:Date.now()});setNr({...nr,name:''});await sendCode({id,name,team:nr.team})},'Reporter added. Send them the link.');
   const none=t=>html`<div class="li"><span class="sub">${t}</span></div>`;
   return html`<h2 class="eyebrow">Reported scores</h2>
-  <div class="list">${reps.map(r=>html`<div class="li" style="flex-wrap:wrap"><span class="grow"><b>${r.label}</b><div class="sub">${r.sport} · away ${r.as}, home ${r.hs} · ${r.st} · from ${r.name}${r.at?' at '+clockOf(r.at):''}</div></span><button class="btn sm pri" onClick=${()=>accept(r)}>Post it</button><button class="btn sm" onClick=${()=>run(()=>DB.set('reports',r.id,{status:'no'},true))}>Dismiss</button></div>`)}${reps.length?null:none('No scores waiting.')}</div>
-  <h2 class="eyebrow" style="margin-top:12px">Trusted source applications</h2>
-  <div class="list">${apps.map(a=>html`<div class="li" style="flex-wrap:wrap"><span class="grow"><b>${a.name}</b> · ${a.role}<div class="sub">${(M.T[a.team]||{}).name||''} · ${a.contact}${a.note?' · '+a.note:''}</div></span><button class="btn sm pri" onClick=${()=>run(async()=>{await DB.set('trusted',a.uid,{name:a.name,team:a.team,contact:a.contact,role:a.role,at:Date.now()});await DB.set('applications',a.id,{status:'ok'},true)},a.name+' is now a trusted source.')}>Approve</button><button class="btn sm" onClick=${()=>run(()=>DB.set('applications',a.id,{status:'no'},true))}>Decline</button></div>`)}${apps.length?null:none('No applications waiting.')}</div>
-  <h2 class="eyebrow" style="margin-top:12px">Photos waiting for approval</h2>
-  ${pend.length?html`<div class="pgrid">${pend.map(x=>html`<button class="ph" aria-label="Review photo" onClick=${()=>openSheet({k:'photo',p:x})}><img src=${x.thumb} alt=""/></button>`)}</div>`:html`<div class="list">${none('No photos waiting.')}</div>`}
-  ${flags.length?html`<h2 class="eyebrow" style="margin-top:12px">Photos someone asked to take down</h2><div class="list">${flags.map(f=>html`<div class="li"><span class="grow">${(M.T[f.team]||{}).name||'Photo'}</span><button class="btn sm" onClick=${async()=>{const x=await DB.get('photos',f.photo).catch(()=>null);if(x)openSheet({k:'photo',p:x});else SAY('That photo is already gone.')}}>View</button><button class="btn sm" onClick=${()=>run(()=>DB.del('flags',f.id))}>Clear</button></div>`)}</div>`:null}
-  <h2 class="eyebrow" style="margin-top:12px">Trusted sources</h2>
-  <div class="list">${trusted.map(t=>html`<div class="li"><span class="grow"><b>${t.name}</b><div class="sub">${(M.T[t.team]||{}).name||''}${t.role?' · '+t.role:''}${t.contact?' · '+t.contact:''}</div></span><button class="btn sm" onClick=${()=>run(()=>DB.del('trusted',t.id),'Removed.')}>Remove</button></div>`)}${trusted.length?null:none('Nobody yet. Approve an application and their scores post instantly.')}</div>`;
+  <div class="list">${reps.map(r=>html`<div class="li" style="flex-wrap:wrap"><span class="grow" style="flex-basis:100%"><b>${r.label}</b><div class="sub">${r.sport} · away ${r.as}, home ${r.hs} · ${r.st} · from ${r.name}${r.at?' at '+clockOf(r.at):''}${reps.filter(x=>x.game===r.game&&x.uid!==r.uid&&x.as===r.as&&x.hs===r.hs).length?' · another fan reported the same':''}</div></span>
+    ${r.pic?html`<button class="btn sm" onClick=${()=>seePic(r)}>${Ico.camera} Photo</button>`:null}<button class="btn sm pri" onClick=${()=>accept(r)}>Post it</button><button class="btn sm" onClick=${()=>run(()=>DB.set('reports',r.id,{status:'no'},true))}>Dismiss</button>
+    ${pics[r.id]?pics[r.id]==='none'?html`<div class="note" style="width:100%">The photo did not load.</div>`:html`<img src=${pics[r.id]} alt="Scoreboard photo" style="width:100%;border-radius:10px"/>`:null}</div>`)}${reps.length?null:none('No scores waiting.')}</div>
+  <div class="note">Fan scores also show for everyone on their own when two different fans report the same score.</div>
+  <h2 class="eyebrow" style="margin-top:12px">Score reporters</h2>
+  <div class="note">Reporters' scores show for everyone right away. Add someone, then text them the link. They open it once on their phone.</div>
+  <div class="formrow"><label class="field">Name<input id="nr-name" value=${nr.name} maxlength="40" onInput=${e=>setNr({...nr,name:e.target.value})} placeholder="Jen S."/></label>
+    <label class="field">School<select id="nr-team" value=${nr.team} onChange=${e=>setNr({...nr,team:e.target.value})}>${M.S.teams.map(t=>html`<option value=${t.id}>${t.name}</option>`)}</select></label></div>
+  <div><button class="btn pri" disabled=${!nr.name.trim()} onClick=${addRep}>Add reporter and send link</button></div>
+  <div class="list">${codes.map(c=>{const on=trusted.filter(t=>t.code===c.id);return html`<div class="li" style="flex-wrap:wrap"><span class="grow" style="flex-basis:100%"><b>${c.name}</b><div class="sub">${(M.T[c.team]||{}).name||''} · code ${c.id} · ${on.length?on.length+' phone'+(on.length>1?'s':'')+' turned on':'not opened yet'}</div></span>
+    <button class="btn sm" onClick=${()=>sendCode(c)}>Send link</button><button class="btn sm" onClick=${()=>run(async()=>{for(const t of on)await DB.del('trusted',t.id);await DB.del('repcodes',c.id)},c.name+' is no longer a reporter.')}>Remove</button></div>`})}
+    ${trusted.filter(t=>!t.code||!codes.some(c=>c.id===t.code)).map(t=>html`<div class="li"><span class="grow"><b>${t.name}</b><div class="sub">${(M.T[t.team]||{}).name||''}${t.role?' · '+t.role:''}${t.contact?' · '+t.contact:''}</div></span><button class="btn sm" onClick=${()=>run(()=>DB.del('trusted',t.id),'Removed.')}>Remove</button></div>`)}
+    ${codes.length||trusted.length?null:none('No reporters yet.')}</div>
+  <h2 class="eyebrow" style="margin-top:12px">Reporter applications</h2>
+  <div class="list">${apps.map(a=>html`<div class="li" style="flex-wrap:wrap"><span class="grow" style="flex-basis:100%"><b>${a.name}</b> · ${a.role}<div class="sub">${(M.T[a.team]||{}).name||''} · ${a.contact}${a.note?' · '+a.note:''}</div></span><button class="btn sm pri" onClick=${()=>run(async()=>{await DB.set('trusted',a.uid,{name:a.name,team:a.team,contact:a.contact,role:a.role,at:Date.now()});await DB.set('applications',a.id,{status:'ok'},true)},a.name+' is now a reporter.')}>Approve</button><button class="btn sm" onClick=${()=>run(()=>DB.set('applications',a.id,{status:'no'},true))}>Decline</button></div>`)}${apps.length?null:none('No applications waiting.')}</div>`;
 }
 function AdmFans({M,update}){
   const S=M.S,Mv=useMemo(()=>model(S,M.sport,'v'),[S,M.sport]);const[wk,setWk]=useState(Mv.cur);const[busy,setBusy]=useState(false);
@@ -1165,19 +1220,36 @@ function migrateOld(){ // carry over edits made before the shared database exist
       Object.keys(t.rosters||{}).forEach(sp=>Object.keys(t.rosters[sp]).forEach(lv=>{const r=t.rosters[sp][lv];if(r&&r.length&&J(r)!==J((x.rosters[sp]||{})[lv]||[]))p.rosters[t.id+'|'+sp+'|'+lv]=r}))});
     return p}catch(e){return{}}
 }
+/* Scores from fans show for everyone on their own once two different phones report the same score. */
+function fanAgree(reps){const by={},out={};
+  reps.forEach(r=>{if(r.status!=='new'||r.as==null||r.hs==null)return;const g=by[r.game]=by[r.game]||{};if(!g[r.uid]||(g[r.uid].at||0)<(r.at||0))g[r.uid]=r});
+  Object.keys(by).forEach(gid=>{const grp={};Object.values(by[gid]).forEach(r=>{(grp[r.as+'-'+r.hs]=grp[r.as+'-'+r.hs]||[]).push(r)});
+    Object.values(grp).forEach(l=>{if(l.length<2)return;const last=l.reduce((a,b)=>(a.at||0)>(b.at||0)?a:b),fin=l.find(r=>/^Final/.test(r.st));
+      const e={as:last.as,hs:last.hs,st:fin?fin.st:last.st,by:l.length+' fans',at:last.at||Date.now(),fans:true};if(!out[gid]||out[gid].at<e.at)out[gid]=e})});
+  return out}
+const mergeLive=(fan,live)=>{if(!fan||!Object.keys(fan).length)return live;const o={...(live||{})};Object.keys(fan).forEach(k=>{if(!o[k]||(o[k].at||0)<fan[k].at&&!/^Final/.test(o[k].st))o[k]=fan[k]});return o};
+const urlParam=k=>{try{return new URLSearchParams(location.search).get(k)||''}catch(e){return''}};
 function App(){
   const[patch,setPatchRaw]=useState(()=>ls.json('pb_patch')||migrateOld());const[live,setLive]=useState(null);
   const[me,setMe]=useState({...DB.me});const[ver,setVer]=useState(0);const[toast,setToast]=useState('');const[favs,setFavs]=useState(loadFavs);
-  const[view,setView]=useState({v:'home'});const[homeTab,setHomeTab]=useState(()=>({'#vote':'players','#picks':'picks','#photos':'photos','#playoffs':'schedule','#schedule':'schedule'})[location.hash]||'scores');
-  const[sheet,setSheet]=useState(null);const[level,setLevel]=useState('v');const[sport,setSportRaw]=useState(()=>{const h=loadHidden(),f=SEED.sports.find(x=>x.on&&!h.includes(x.id));return f?f.id:'football'});
+  const[view,setView]=useState({v:'home'});const[homeTab,setHomeTab]=useState(()=>({'#vote':'players','#picks':'picks','#playoffs':'schedule','#schedule':'schedule'})[location.hash]||'scores');
+  const[sheet,setSheet]=useState(null);const[level,setLevel]=useState('v');const[sport,setSportRaw]=useState(()=>{const h=loadHidden(),cur=seasonIds(applyPatch(SEED,ls.json('pb_patch')||{},null)),f=SEED.sports.find(x=>x.on&&cur.includes(x.id)&&!h.includes(x.id))||SEED.sports.find(x=>x.on&&cur.includes(x.id));return f?f.id:'football'});
   const pref=useRef(patch),saveT=useRef(null),toastT=useRef(null);
   const[picks,setPicks]=useState({});const[hidden,setHidden]=useState(loadHidden);
   const toggleSport=id=>setHidden(h=>{const n=h.includes(id)?h.filter(x=>x!==id):h.concat(id);ls.set('pb_hide_sports',JSON.stringify(n));return n});
   useEffect(()=>{noteJoin();PICKED=(g,k)=>{setPicks(p=>({...p,[g]:k}));markActive()};if(COMMUNITY)dbReady.then(()=>DB.list('picks',[['uid','==',DB.me.uid]])).then(r=>{const o={};r.forEach(x=>{if(x.pick)o[x.game]=x.pick});setPicks(p=>({...o,...p}))}).catch(()=>{});
-    if(!ls.get('pb_guide')&&location.hash!=='#admin'){ls.set('pb_guide','1');setSheet({k:'guide'})}},[]);
+    noteRepLink(()=>setMe({...DB.me}));if(myAlerts())swReg();
+    const gid=urlParam('g'),sg0=gid&&SEED.games.find(g=>g.id===gid);
+    if(gid){try{history.replaceState(null,'',location.pathname+location.hash)}catch(e){}}
+    if(sg0){setSportRaw(sg0.sport||'football');setLevel(sg0.level||'v');setSheet({k:'game',id:sg0.id})}
+    // First open: scores first. The home screen prompt comes after a shared game is closed, or after a few seconds of looking around.
+    if(!ls.get('pb_guide')&&location.hash!=='#admin'){ls.set('pb_guide','1');if(sg0)GUIDE_NEXT=true;else setTimeout(()=>setSheet(x=>x||{k:'guide'}),standalone()?2500:9000)}},[]);
   const[adm,setAdm]=useState(SHOW_ADMIN);useEffect(()=>{const h=()=>{if(location.hash==='#admin')setAdm(true)};window.addEventListener('hashchange',h);return()=>window.removeEventListener('hashchange',h)},[]);
   const setPatch=p=>{pref.current=p;setPatchRaw(p);ls.set('pb_patch',JSON.stringify(p))};
-  const S=useMemo(()=>applyPatch(SEED,patch,live),[patch,live]);
+  const[fan,setFan]=useState({});
+  const S=useMemo(()=>applyPatch(SEED,patch,mergeLive(fan,live)),[patch,live,fan]);
+  useEffect(()=>{if(!COMMUNITY)return;let t;const tick=()=>{const d=todayISO();if(document.visibilityState!=='hidden'&&SEED.games.some(g=>g.date===d))
+      dbReady.then(()=>DB.list('reports',[['day','==',d],['status','==','new']])).then(r=>setFan(fanAgree(r||[]))).catch(()=>{});t=setTimeout(tick,60000)};tick();return()=>clearTimeout(t)},[]);
   useEffect(()=>{SAY=m=>{setToast(m);clearTimeout(toastT.current);toastT.current=setTimeout(()=>setToast(''),4200)};const off=[];
     dbReady.then(()=>{setMe({...DB.me});off.push(DB.watch('state','admin',d=>{if(d&&!saveT.current)setPatch(d)}));off.push(DB.watch('state','live',d=>setLive(d||{})))});countVisit();
     const h=()=>{if(document.visibilityState!=='hidden')return;flushTrack();if(saveT.current){clearTimeout(saveT.current);saveT.current=null;DB.set('state','admin',pref.current).catch(()=>{})}};document.addEventListener('visibilitychange',h);
@@ -1188,27 +1260,27 @@ function App(){
   const update=fn=>{const n=applyPatch(SEED,pref.current,null);fn(n);const p=derivePatch(n);setPatch(p);
     clearTimeout(saveT.current);saveT.current=setTimeout(()=>{saveT.current=null;dbReady.then(()=>DB.set('state','admin',pref.current)).catch(e=>{console.warn(e);SAY('That change did not save for everyone. Check your connection.')})},700)};
   const reset=()=>{setPatch({});dbReady.then(()=>DB.set('state','admin',{})).catch(()=>{})};
-  const toggle=id=>setFavs(f=>{const n=f.includes(id)?f.filter(x=>x!==id):f.concat(id);ls.set(FAVKEY,JSON.stringify(n));if(n.length)markActive();return n});
+  const toggle=id=>setFavs(f=>{const n=f.includes(id)?f.filter(x=>x!==id):f.concat(id);ls.set(FAVKEY,JSON.stringify(n));if(n.length)markActive();
+    const a=myAlerts();if(a&&COMMUNITY){a.teams=n;ls.set('pb_push',JSON.stringify(a));dbReady.then(()=>DB.set('push',DB.me.uid,{teams:n},true)).catch(()=>{})}return n});
   const go=v=>{setView(v);try{window.scrollTo(0,0)}catch(e){}};
-  const openGame=g=>setSheet({k:'game',id:g.id}),close=()=>setSheet(null),bump=()=>setVer(v=>v+1);
+  const openGame=g=>setSheet({k:'game',id:g.id}),close=()=>{if(GUIDE_NEXT){GUIDE_NEXT=false;setSheet({k:'guide'})}else setSheet(null)},bump=()=>setVer(v=>v+1);
   const tv=view.v==='team'?M.T[view.id]:null,th=teamTheme(tv);
   const sg=sheet&&sheet.id?S.games.find(g=>g.id===sheet.id):null,MG=sg?(sg.sport===sport&&(sg.level||'v')===level?M:Object.assign(model(S,sg.sport||'football',sg.level||'v'),{picks})):M;
   return html`<div class="wrap">
     <header class=${'hdr'+(tv?' tband':'')} style=${tv?'background:'+(th?th.band:'var(--bg)')+';color:'+(th?th.ink:'var(--fg)'):''}>${tv?html`<button class="tback" onClick=${()=>go({v:'home'})} aria-label="Back to all schools">${Ico.back}<${Logo} id=${tv.id} size=${34}/><span>${tv.name} ${tv.mascot}</span></button>`
     :html`<button class="brand" onClick=${()=>go({v:'home'})} aria-label="208 Pressbox home"><img src=${BRAND.icon} alt=""/><b>208</b><span>PRESSBOX</span></button>`}
       <div class="hdr-btns"><button class="icon" aria-label="Search" onClick=${()=>setSheet({k:'search'})}>${Ico.search}</button>${adm?html`<button class="icon" aria-label="Admin" onClick=${()=>go({v:'admin'})}>${Ico.gear}</button>`:null}</div></header>
-    ${view.v==='home'?html`<${Home} M=${M} favs=${favs} go=${go} tab=${homeTab} setTab=${setHomeTab} openGame=${openGame} openFavs=${()=>setSheet({k:'favs'})} level=${level} setLevel=${setLevel} setSport=${setSport} openSheet=${setSheet} ver=${ver}/>`:null}
+    ${view.v==='home'?html`<${Home} M=${M} me=${me} favs=${favs} go=${go} tab=${homeTab} setTab=${setHomeTab} openGame=${openGame} openFavs=${()=>setSheet({k:'favs'})} level=${level} setLevel=${setLevel} setSport=${setSport} openSheet=${setSheet} ver=${ver}/>`:null}
     ${view.v==='home'?html`<div class="ctx"><span>All schools</span> · ${M.sp.name}${M.level==='v'?'':' · '+LV[M.level]}</div>`:null}
     ${view.v==='team'&&M.T[view.id]?html`<div class="tpage" style=${th?'--accent:'+th.acc+';--on-accent:'+th.onAcc:''}><${TeamPage} M=${M} id=${view.id} tab=${view.tab||'scores'} setTab=${t=>setView({...view,tab:t})} favs=${favs} toggle=${toggle} go=${go} openGame=${openGame} openDonate=${t=>setSheet({k:'donate',id:t.id})} level=${level} setLevel=${setLevel} setSport=${setSport} openSheet=${setSheet} ver=${ver}/></div>`:null}
     ${view.v==='admin'?html`<${Admin} M=${M} update=${update} reset=${reset} go=${go} level=${level} setLevel=${setLevel} setSport=${setSport} me=${me} setMe=${setMe} openSheet=${setSheet} ver=${ver} bump=${bump}/>`:null}
     ${view.v==='home'?html`<div class="note" style="padding-top:8px"><button class="link" style="min-height:44px;font-size:13px" onClick=${()=>setSheet({k:'install'})}>Add 208 Pressbox to your home screen</button> · <button class="link" style="min-height:44px;font-size:13px" onClick=${()=>setSheet({k:'guide',start:2})}>How it works</button></div>`:null}
     ${sheet&&sheet.k==='game'&&sg?html`<${GameSheet} M=${MG} g=${sg} go=${go} onClose=${close} openSheet=${setSheet}/>`:null}
     ${sheet&&sheet.k==='share'&&sg?html`<${ShareSheet} M=${MG} g=${sg} onClose=${close}/>`:null}
-    ${sheet&&sheet.k==='report'&&sg?html`<${ReportSheet} M=${MG} g=${sg} onClose=${()=>{close();bump()}}/>`:null}
+    ${sheet&&sheet.k==='report'&&sg?html`<${ReportSheet} M=${MG} g=${sg} onRep=${()=>setMe({...DB.me})} onClose=${()=>{close();bump()}}/>`:null}
     ${sheet&&sheet.k==='install'?html`<${InstallSheet} onClose=${close}/>`:null}
+    ${sheet&&sheet.k==='alerts'?html`<${AlertSheet} M=${M} favs=${favs} onClose=${close} openInstall=${()=>setSheet({k:'install'})}/>`:null}
     ${sheet&&sheet.k==='guide'?html`<${Welcome} M=${M} favs=${favs} toggle=${toggle} start=${sheet.start} onClose=${close}/>`:null}
-    ${sheet&&sheet.k==='upload'?html`<${UploadSheet} M=${M} team=${sheet.team} onClose=${close} onDone=${bump}/>`:null}
-    ${sheet&&sheet.k==='photo'?html`<${PhotoSheet} M=${M} p=${sheet.p} onClose=${close} onDone=${bump}/>`:null}
     ${sheet&&sheet.k==='favs'?html`<${FavSheet} M=${M} favs=${favs} toggle=${toggle} toggleSport=${toggleSport} onClose=${close}/>`:null}
     ${sheet&&sheet.k==='search'?html`<${SearchSheet} M=${M} go=${go} setSport=${setSport} setLevel=${setLevel} onClose=${close}/>`:null}
     ${sheet&&sheet.k==='donate'?html`<${DonateSheet} t=${M.T[sheet.id]} onClose=${close}/>`:null}

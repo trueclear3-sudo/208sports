@@ -32,6 +32,7 @@ full = ('<!doctype html><html lang="en"><head><meta charset="utf-8">'
 open("dist/index.html", "w").write(full)
 import shutil
 for f in ("icon-192.png", "icon-512.png", "apple-touch-icon.png"): shutil.copy("brand/" + f, "dist/" + f)
+shutil.copy("sw.js", "dist/sw.js")      # score alerts
 json.dump({"name": "208 Pressbox", "short_name": "208 Pressbox", "start_url": ".", "scope": ".", "display": "standalone",
            "background_color": "#0E1116", "theme_color": "#0E1116",
            "icons": [{"src": "icon-192.png", "sizes": "192x192", "type": "image/png"},
