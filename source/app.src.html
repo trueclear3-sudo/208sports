@@ -324,6 +324,24 @@ function noteJoin(){if(!COMMUNITY)return;let r='';try{r=new URLSearchParams(loca
   if(r){try{history.replaceState(null,'',location.pathname+location.hash)}catch(e){}}
   if(!r||ls.get('pb_joined'))return;
   dbReady.then(async()=>{if(r===DB.me.uid)return;const had=await DB.get('joins',DB.me.uid).catch(()=>null);if(!had)await DB.set('joins',DB.me.uid,{ref:r,at:DB.stamp(),active:false});ls.set('pb_joined','1')}).catch(e=>console.warn(e))}
+function saveName(n){n=(n||'').trim().slice(0,24);if(!n)return;ls.set('pb_name',n);if(!COMMUNITY)return;
+  dbReady.then(()=>{if(ls.get('pb_joined'))DB.set('joins',DB.me.uid,{name:n},true).catch(()=>{})}).catch(()=>{})}
+// right-of-graded for a set of my picks on a set of games
+function recordOf(picks,games){let w=0,l=0;games.forEach(g=>{const k=picks[g.id];if(!k||!played(g)||g.hs===g.as)return;if((g.hs>g.as?'home':'away')===k)w++;else l++});return{w,l,txt:w+'-'+l}}
+function Friends({S,sport,M}){
+  const prev=M.weeks[M.cur-1],pwid=prev?sport+':'+mondayOf(prev.first):'';
+  const[d]=useLoad(async()=>{const me=DB.me.uid;
+    const[mine,joined,boardW,boardS]=await Promise.all([DB.get('joins',me).catch(()=>null),DB.list('joins',[['ref','==',me]]).catch(()=>[]),pwid?DB.get('boards',pwid).catch(()=>null):null,DB.get('boards',sport+':season').catch(()=>null)]);
+    const row=(b,u)=>b&&b.rows?b.rows.find(r=>r.uid===u):null;
+    const people=joined.map(j=>({uid:j.id,name:j.name,how:'joined with your link'}));
+    if(mine&&mine.ref)people.unshift({uid:mine.ref,name:null,how:'invited you'});
+    return people.map(p=>{const w=row(boardW,p.uid),sea=row(boardS,p.uid);return{...p,name:p.name||(sea&&sea.name)||(w&&w.name)||null,last:w?w.right+'-'+(w.of-w.right):null,season:sea?sea.right+'-'+(sea.of-sea.right):null}});
+  },[sport,pwid]);
+  if(!d||!d.length)return html`<div class="card"><b>Your friends</b><div class="note">Friends who join with your invite link show up here with their records, so you can see how you stack up.</div></div>`;
+  return html`<h3 class="eyebrow">Your friends</h3><div class="tablebox"><table><thead><tr><th>Friend</th><th>Last week</th><th>Season</th></tr></thead><tbody>
+    ${d.map(p=>html`<tr><td><b>${p.name||'Name not set yet'}</b><div class="sub" style="font-size:12px;color:var(--muted)">${p.how}</div></td><td>${p.last||'–'}</td><td>${p.season||'–'}</td></tr>`)}</tbody></table></div>
+    <div class="note">Friends' records come from the leaderboard, which updates after each week's games.</div>`;
+}
 function markActive(){if(!ls.get('pb_joined')||ls.get('pb_active'))return;ls.set('pb_active','1');dbReady.then(()=>DB.set('joins',DB.me.uid,{active:true},true)).catch(()=>{})}
 async function joinCounts(){const all=await DB.list('joins');const c={};all.forEach(j=>{const x=c[j.ref]=c[j.ref]||{joined:0,active:0};x.joined++;if(j.active)x.active++});return c}
 function InviteBox({S}){
@@ -332,7 +350,7 @@ function InviteBox({S}){
   const sent=d?d.sent:0,joined=d?d.joined:0,ok=!need||joined>=need;
   return html`<div class="card" style="gap:8px"><div class="between"><b>Invite friends</b>${need?html`<span class=${'tag'} style=${ok?'color:var(--good);border-color:var(--good)':''}>${ok?'Prize eligible':joined+' of '+need+' joined'}</span>`:null}</div>
     <div class="note">${need?'Get '+need+' friend'+(need>1?'s':'')+' to join with your link to be eligible for prizes. ':''}You have sent ${sent} invite${sent===1?'':'s'} and ${joined} ${joined===1?'person has':'people have'} joined.</div>
-    <div><button class="btn pri" onClick=${async()=>{if(!myName()){SAY('Type a leaderboard name first.');const el=document.getElementById('pk-name');if(el)el.focus();return}if(await sendInvite('Play Pick\'em with me on 208 Pressbox, local high school scores and picks.'))reload()}}>${Ico.share} Send my invite link</button></div></div>`;
+    <div><button class="btn pri" onClick=${async()=>{if(!myName()){SAY('Type your name first so friends know who invited them.');const el=document.getElementById('pk-name');if(el)el.focus();return}if(await sendInvite('Play Pick\'em with me on 208 Pressbox, local high school scores and picks.'))reload()}}>${Ico.share} Send my invite link</button></div></div>`;
 }
 function PickPromo({S,sport,go}){
   const M=useMemo(()=>model(S,sport,'v'),[S,sport]),w=M.weeks[M.cur];if(!w)return null;
@@ -698,6 +716,7 @@ const HIGHLIGHTS=[['Scores and schedules','Scores for your teams up front. Full 
 /* First open: 1) add to home screen, 2) pick teams, 3) a few highlights. Opened from the home screen it starts at step 2,
    so nobody picks teams in the browser and then again in the installed app. */
 function Welcome({M,favs,toggle,onClose,start}){
+  const[nm,setNm]=useState(myName());
   const first=standalone()?1:0,[step,setStep]=useState(start==null?first:start),n=3-first,at=step-first+1;
   const steps=html`<span class="note">Step ${at} of ${n}</span>`;
   if(step===0)return html`<${Sheet} title="Add it to your home screen" onClose=${onClose}>${steps}
@@ -706,9 +725,10 @@ function Welcome({M,favs,toggle,onClose,start}){
     <div class="note">After it is on your home screen, close this page and open 208 Pressbox from the new icon.</div>
     <div><button class="btn" onClick=${()=>setStep(1)}>Not now, keep going here</button></div><//>`;
   if(step===1)return html`<${Sheet} title="Pick your teams" onClose=${onClose}>${steps}
-    <div class="note">Their latest score and next game show first when you open the app. You can change this any time.</div>
+    <label class="field">Your name (shows to friends and on Pick'em)<input id="wl-name" value=${nm} maxlength="24" onInput=${e=>setNm(e.target.value)} onBlur=${()=>saveName(nm)} placeholder="First name and last initial"/></label>
+    <div class="note">Then follow your teams. Their latest score and next game show first when you open the app. You can change this any time.</div>
     <div class="list">${M.S.teams.map(t=>html`<div class="li"><${Logo} id=${t.id} size=${36}/><span class="grow"><b>${t.name}</b><div class="sub">${t.mascot}</div></span><button class=${'btn sm'+(favs.includes(t.id)?' pri':'')} aria-pressed=${favs.includes(t.id)} onClick=${()=>toggle(t.id)}>${favs.includes(t.id)?'Following':'Follow'}</button></div>`)}</div>
-    <div><button class="btn pri" onClick=${()=>setStep(2)}>${favs.length?'Next':'Skip for now'}</button></div><//>`;
+    <div><button class="btn pri" onClick=${()=>{saveName(nm);setStep(2)}}>${favs.length||nm.trim()?'Next':'Skip for now'}</button></div><//>`;
   return html`<${Sheet} title="You're set" onClose=${onClose}>${start==null?steps:null}
     <div class="list">${HIGHLIGHTS.map(x=>html`<div class="li"><span class="grow"><b>${x[0]}</b><div class="sub">${x[1]}</div></span></div>`)}</div>
     <div><button class="btn pri" onClick=${onClose}>${start==null?'Start':'Got it'}</button></div><//>`;
@@ -812,6 +832,7 @@ async function scoreBracket(b){
 function Pickem({S,sport}){
   const M=useMemo(()=>model(S,sport,'v'),[S,sport]);const[wk,setWk]=useState(M.cur);const w=M.weeks[Math.min(wk,M.weeks.length-1)];
   const wid=w?sport+':'+mondayOf(w.first):'';const[name,setName]=useState(myName());const[mine,setMine]=useState({});const[pred,setPred]=useState({});
+  const[allMine]=useLoad(()=>DB.list('picks',[['uid','==',DB.me.uid]]).then(r=>{const o={};r.forEach(p=>{if(p.pick)o[p.game]=p.pick});return o}),[sport]);
   const[b]=useLoad(()=>Promise.all([DB.get('boards',wid),DB.get('boards',sport+':season')]),[wid]);
   useEffect(()=>{let on=true;setMine({});if(!wid)return;dbReady.then(()=>DB.list('picks',[['uid','==',DB.me.uid],['week','==',wid]])).then(r=>{if(!on)return;const o={},q={};r.forEach(p=>{o[p.game]=p.pick;if(p.ps)q[p.game]=p.ps});setMine(o);setPred(q)}).catch(()=>{});return()=>{on=false}},[wid]);
   if(!w)return html`<div class="slot"><strong>No games to pick</strong><span>There is no ${M.sp.name} schedule yet.</span></div>`;
@@ -833,9 +854,10 @@ function Pickem({S,sport}){
   const brs=(S.brackets||[]).filter(x=>x.sport===sport),inBr=new Set(brs.flatMap(x=>x.rounds.flatMap(r=>r.games.map(y=>y.game).filter(Boolean))));
   const myRow=wb&&wb.rows?wb.rows.findIndex(r=>r.uid===DB.me.uid):-1;
   return html`<div class="pkhero"><div class="between"><h2>PICK'EM</h2><span class="note">${M.sp.name} · ${w.label.split(' · ')[0]}</span></div>
-      <div class="pkstat"><div><b>${open.filter(g=>!inBr.has(g.id)).length}</b><span>open games</span></div><div><b>${made}</b><span>your picks</span></div><div><b>${myRow>=0?'#'+(myRow+1):'–'}</b><span>your rank</span></div></div></div>
-    <label class="field">Your leaderboard name<input id="pk-name" value=${name} maxlength="24" onInput=${e=>setName(e.target.value)} placeholder="First name and last initial works"/></label>
-    ${COMMUNITY?html`<${InviteBox} S=${S}/>`:null}
+      <div class="pkstat"><div><b>${open.filter(g=>!inBr.has(g.id)).length}</b><span>open games</span></div><div><b>${made}</b><span>your picks</span></div><div><b>${myRow>=0?'#'+(myRow+1):'–'}</b><span>your rank</span></div></div>
+      ${allMine?html`<div class="pkstat"><div><b>${recordOf(allMine,(M.weeks[M.cur-1]||{games:[]}).games).txt}</b><span>last week</span></div><div><b>${recordOf(allMine,w.games).txt}</b><span>this week</span></div><div><b>${recordOf(allMine,M.G).txt}</b><span>season</span></div></div>`:null}</div>
+    <label class="field">Your leaderboard name<input id="pk-name" value=${name} maxlength="24" onInput=${e=>setName(e.target.value)} onBlur=${()=>saveName(name)} placeholder="First name and last initial works"/></label>
+    ${COMMUNITY?html`<${InviteBox} S=${S}/><${Friends} S=${S} sport=${sport} M=${M}/>`:null}
     ${brs.map(x=>html`<${BracketPick} key=${x.title} b=${x} name=${name}/><${BrBoard} b=${x}/>`)}
     ${brs.length?html`<h2 class="eyebrow" style="margin-top:8px">Weekly pick'em</h2>`:null}
     <${WeekPick} weeks=${M.weeks} wk=${Math.min(wk,M.weeks.length-1)} setWk=${setWk} cur=${M.cur}/>
