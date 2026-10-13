@@ -18,6 +18,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -36,10 +38,20 @@ jobs:
           git config user.email "actions@users.noreply.github.com"
           git add -A
           if git diff --cached --quiet; then echo "Nothing to publish."; exit 0; fi
-          git commit -m "Game night scores: $(sed -n 2p source/updater/last-run.txt)"
-          git pull --rebase -q origin main
-          git push
+          git commit -qm "Game night scores: $(sed -n 2p source/updater/last-run.txt)"
+          for i in 1 2 3; do
+            if git pull --rebase -q origin main && git push -q; then echo "Published."; exit 0; fi
+            echo "Someone else published first. Redoing on top of the newest copy."
+            git rebase --abort 2>/dev/null || true
+            git fetch -q origin main && git reset -q --hard origin/main
+            python3 source/updater/update.py --tonight || true
+            git add -A
+            if git diff --cached --quiet; then exit 0; fi
+            git commit -qm "Game night scores"
+          done
+          exit 1
       - name: Send score alerts
+        if: always()
         env:
           FIREBASE_SA: ${{ secrets.FIREBASE_SA }}
         run: python3 source/notify/notify.py
